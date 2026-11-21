@@ -1,0 +1,2949 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forest — Quản lý Công việc & Học tập Google Sheets</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --bg-grad: linear-gradient(160deg, #f3f6f4 0%, #e7efe9 48%, #d7e4dc 100%);
+      --glass-bg: rgba(255, 255, 255, 0.78);
+      --glass-strong: rgba(255, 255, 255, 0.92);
+      --glass-border: rgba(255, 255, 255, 0.72);
+      --glass-blur: 14px;
+      --text-main: #111827;
+      --text-muted: #64748b;
+      --accent-dark: #111827;
+      --accent-rose-bg: #f6d5d8;
+      --accent-rose-border: #ecc0c5;
+      --accent-crimson: #c0262d;
+      --pill-maroon: #7f1d2d;
+      --pill-blue: #4f86a8;
+      --pill-black: #18181b;
+      --pill-alert-bg: #fce7f3;
+      --pill-alert-text: #be123c;
+    }
+
+    body.theme-sunset {
+      --bg-grad: linear-gradient(160deg, #fdf6f3 0%, #f6e6df 50%, #ebd7ce 100%);
+    }
+    body.theme-pastel {
+      --bg-grad: linear-gradient(160deg, #fdf2f4 0%, #f6e7ec 50%, #ebdce4 100%);
+    }
+    body.theme-aurora {
+      --bg-grad: linear-gradient(160deg, #0f172a 0%, #132a2e 52%, #1e293b 100%);
+      --glass-bg: rgba(20, 30, 42, 0.76);
+      --glass-strong: rgba(26, 39, 54, 0.90);
+      --glass-border: rgba(148, 163, 184, 0.22);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --accent-dark: #10b981;
+      --accent-rose-bg: #3b1f2b;
+      --accent-rose-border: #5c2d3e;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-grad);
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .forest-bg-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .glass-panel {
+      background: var(--glass-bg);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 8px 30px rgba(15, 23, 42, 0.05);
+    }
+
+    .glass-strong {
+      background: var(--glass-strong);
+      backdrop-filter: blur(var(--glass-blur));
+      -webkit-backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 10px 32px rgba(15, 23, 42, 0.06);
+    }
+
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 9px 13px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-main);
+      transition: transform 0.14s ease, background-color 0.14s ease, color 0.14s ease;
+      text-align: left;
+      cursor: pointer;
+    }
+    .nav-btn:hover {
+      background: rgba(15, 23, 42, 0.06);
+    }
+    body.theme-aurora .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .nav-btn.active {
+      background: var(--accent-dark);
+      color: #ffffff;
+      font-weight: 600;
+      box-shadow: 0 4px 14px rgba(17, 24, 39, 0.18);
+    }
+
+    /* Calendar grid */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-left: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .cal-cell {
+      min-height: 98px;
+      padding: 6px;
+      border-right: 1px solid rgba(148, 163, 184, 0.22);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      background: rgba(255, 255, 255, 0.52);
+      transition: background-color 0.14s ease;
+      cursor: pointer;
+    }
+    body.theme-aurora .cal-cell {
+      background: rgba(15, 23, 42, 0.35);
+    }
+    .cal-cell:hover {
+      background: rgba(255, 255, 255, 0.85);
+    }
+    body.theme-aurora .cal-cell:hover {
+      background: rgba(30, 41, 59, 0.65);
+    }
+    .cal-pill {
+      display: block;
+      width: 100%;
+      padding: 2.5px 6px;
+      margin-top: 3px;
+      border-radius: 6px;
+      font-size: 10.5px;
+      font-weight: 600;
+      line-height: 1.3;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cal-pill-maroon { background: var(--pill-maroon); color: #fff; }
+    .cal-pill-blue { background: var(--pill-blue); color: #fff; }
+    .cal-pill-black { background: var(--pill-black); color: #fff; }
+    .cal-pill-alert {
+      background: var(--pill-alert-bg);
+      color: var(--pill-alert-text);
+      border: 1px solid rgba(190, 18, 60, 0.16);
+    }
+
+    /* Course Accordion matching Image 3 */
+    .chapter-header {
+      background: var(--accent-rose-bg);
+      border: 1px solid var(--accent-rose-border);
+      box-shadow: 0 3px 10px rgba(190, 24, 93, 0.06);
+      transition: filter 0.14s ease;
+    }
+    .chapter-header:hover {
+      filter: brightness(0.98);
+    }
+    .progress-track {
+      width: 112px;
+      height: 8px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow: hidden;
+    }
+    body.theme-aurora .progress-track {
+      background: rgba(148, 163, 184, 0.25);
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: var(--accent-crimson);
+      transition: width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* Smooth custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.28); border-radius: 999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(100, 116, 139, 0.45); }
+
+    .toast-enter {
+      animation: toastSlide 0.22s ease forwards;
+    }
+    @keyframes toastSlide {
+      from { opacity: 0; transform: translateY(12px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+  </style>
+</head>
+<body class="theme-forest">
+  <!-- Subtle Misty Pine Forest Backdrop -->
+  <div class="forest-bg-layer" aria-hidden="true">
+    <svg class="absolute bottom-0 left-0 w-full h-64 opacity-35" viewBox="0 0 1440 320" preserveAspectRatio="none">
+      <path fill="#a3bcae" fill-opacity="0.45" d="M0,256L60,240C120,224,240,192,360,197.3C480,203,600,245,720,245.3C840,245,960,203,1080,186.7C1200,171,1320,181,1380,186.7L1440,192L1440,320L0,320Z"></path>
+      <path fill="#7c9c8c" fill-opacity="0.38" d="M0,288L80,272C160,256,320,224,480,229.3C640,235,800,277,960,272C1120,267,1280,213,1360,186.7L1440,160L1440,320L0,320Z"></path>
+      <g fill="#5b7e6d" fill-opacity="0.28">
+        <polygon points="80,320 115,215 150,320"/>
+        <polygon points="130,320 175,180 220,320"/>
+        <polygon points="210,320 245,230 280,320"/>
+        <polygon points="1160,320 1205,195 1250,320"/>
+        <polygon points="1230,320 1285,155 1340,320"/>
+        <polygon points="1320,320 1365,210 1410,320"/>
+      </g>
+    </svg>
+  </div>
+
+  <!-- Mobile Top Header -->
+  <header class="lg:hidden sticky top-0 z-30 glass-strong px-4 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-2.5">
+      <button type="button" id="mobileMenuBtn" class="p-2 rounded-xl hover:bg-black/5" aria-label="Mở menu">
+        <i data-lucide="menu" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-2">
+        <span class="w-7 h-7 rounded-lg bg-slate-900 text-white grid grid-cols-2 gap-0.5 p-1.5">
+          <span class="bg-white rounded-[1px]"></span><span class="bg-white/60 rounded-[1px]"></span>
+          <span class="bg-white/60 rounded-[1px]"></span><span class="bg-white rounded-[1px]"></span>
+        </span>
+        <span class="font-extrabold text-lg tracking-tight">Forest</span>
+      </div>
+    </div>
+    <button type="button" id="mobileGoogleBtn" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-800 shadow-sm">
+      <span class="w-2 h-2 rounded-full bg-emerald-500" id="mobileGoogleDot"></span>
+      <span id="mobileGoogleLabel">Đăng nhập Google</span>
+    </button>
+  </header>
+
+  <!-- Mobile Sidebar Backdrop -->
+  <div id="sidebarBackdrop" class="fixed inset-0 bg-black/30 z-30 hidden lg:hidden"></div>
+
+  <div class="relative z-10 flex min-h-screen">
+    <!-- Left Sidebar (Forest Style) -->
+    <aside id="sidebar" class="fixed lg:sticky top-0 left-0 z-40 h-screen w-64 shrink-0 glass-strong border-r border-white/60 flex flex-col justify-between p-4 transition-transform duration-200 -translate-x-full lg:translate-x-0 overflow-y-auto">
+      <div>
+        <!-- Brand Logo -->
+        <div class="flex items-center justify-between px-2 pt-1 pb-5">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-slate-900 text-white grid grid-cols-2 gap-1 p-1.5 shadow-sm">
+              <span class="bg-white rounded-[2px]"></span><span class="bg-white/50 rounded-[2px]"></span>
+              <span class="bg-white/50 rounded-[2px]"></span><span class="bg-white rounded-[2px]"></span>
+            </div>
+            <span class="text-xl font-extrabold tracking-tight">Forest</span>
+          </div>
+          <button type="button" id="closeSidebarBtn" class="lg:hidden p-1.5 rounded-lg hover:bg-black/5">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <!-- Google Account Mini Card -->
+        <button type="button" id="sidebarGoogleCard" class="w-full mb-4 p-2.5 rounded-2xl bg-white/75 border border-slate-200/80 hover:border-emerald-400/70 transition flex items-center gap-2.5 text-left shadow-sm">
+          <div id="sidebarAvatar" class="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-bold shrink-0">G</div>
+          <div class="min-w-0 flex-1">
+            <div id="sidebarUserName" class="text-xs font-bold text-slate-900 truncate">Kết nối Google</div>
+            <div id="sidebarUserSub" class="text-[11px] text-slate-500 truncate">Đồng bộ Google Sheets</div>
+          </div>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 text-slate-400 shrink-0"></i>
+        </button>
+
+        <div class="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 px-3 mb-2">WORKSPACE</div>
+        <nav class="space-y-1" id="mainNav">
+          <button type="button" class="nav-btn" data-view="dashboard">
+            <i data-lucide="home" class="w-4 h-4"></i><span>Dashboard</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="work">
+            <i data-lucide="briefcase" class="w-4 h-4"></i><span>Công việc</span>
+          </button>
+          <button type="button" class="nav-btn active" data-view="study">
+            <i data-lucide="graduation-cap" class="w-4 h-4"></i><span>Học tập & Sheets</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="reminder">
+            <i data-lucide="bell" class="w-4 h-4"></i><span>Reminder</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="finance">
+            <i data-lucide="circle-dollar-sign" class="w-4 h-4"></i><span>Finance</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="quicknote">
+            <i data-lucide="sticky-note" class="w-4 h-4"></i><span>Quick Note</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="project">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i><span>Project</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="relax">
+            <i data-lucide="trees" class="w-4 h-4"></i><span>Relax</span>
+          </button>
+          <button type="button" class="nav-btn" data-view="theme">
+            <i data-lucide="contrast" class="w-4 h-4"></i><span>Màu & kính</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="pt-4 mt-4 border-t border-slate-200/60 space-y-1">
+        <button type="button" class="nav-btn" data-view="archive">
+          <i data-lucide="layers" class="w-4 h-4"></i><span>Lưu trữ</span>
+        </button>
+        <button type="button" class="nav-btn" data-view="settings">
+          <i data-lucide="settings" class="w-4 h-4"></i><span>Cài đặt</span>
+        </button>
+
+        <!-- Bottom Quick Note Widget (matching Image 1) -->
+        <div class="pt-3">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 mb-1.5">QUICK NOTE</div>
+          <div class="rounded-2xl bg-white/85 border border-slate-200/80 p-2.5 shadow-inner">
+            <textarea id="sidebarQuickNote" rows="2" placeholder="Đang nghĩ gì? Gõ ở đây..." class="w-full bg-transparent text-xs text-slate-700 placeholder-slate-400 resize-none focus:outline-none"></textarea>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-[10px] text-slate-400">Enter để lưu</span>
+              <button type="button" id="saveSidebarNoteBtn" class="px-2 py-0.5 rounded-lg bg-slate-900 text-white text-[10px] font-semibold hover:bg-slate-700">Lưu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-7 max-w-[1600px] mx-auto w-full">
+      <div id="viewContainer"></div>
+    </main>
+  </div>
+
+  <!-- Reusable Modal Overlay -->
+  <div id="modalOverlay" class="fixed inset-0 z-50 bg-slate-950/45 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div id="modalBox" class="bg-white text-slate-900 rounded-3xl shadow-2xl max-w-xl w-full max-h-[90vh] overflow-y-auto p-6 relative"></div>
+  </div>
+
+  <!-- Toast Stack -->
+  <div id="toastStack" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <script>
+    // =========================================================================
+    // STATE & PERSISTENCE (Unicode NFC normalized, try/catch localStorage)
+    // =========================================================================
+    const STORAGE_KEY = 'forest_study_os_v2';
+
+    const nfc = (str) => (typeof str === 'string' ? str.normalize('NFC').replace(/[\u00B4`]/g, '') : '');
+
+    function uid(prefix = 'id') {
+      return prefix + '_' + Math.random().toString(36).slice(2, 9);
+    }
+
+    const DEFAULT_STATE = {
+      activeView: 'study', // 'dashboard' | 'work' | 'study' | 'reminder' | 'finance' | 'quicknote' | 'project' | 'relax' | 'theme' | 'archive' | 'settings'
+      studySubTab: 'courses', // 'courses' | 'tkb'
+      selectedDay: 6, // 1=T2 ... 7=CN (default Saturday Nov 21, 2026)
+      workLeftTab: 'kho', // 'kho' | 'booking'
+      calFilter: 'all', // 'all' | 'study' | 'deadline'
+      calYear: 2026,
+      calMonth: 10, // 0-indexed -> 10 = Tháng 11
+      theme: 'forest', // 'forest' | 'sunset' | 'pastel' | 'aurora'
+      glassBlur: 14,
+      googleAuth: {
+        clientId: '',
+        signedIn: false,
+        accessToken: '',
+        tokenExpiresAt: 0,
+        user: null // { name, email, picture }
+      },
+      autoSyncOnLoad: true,
+      selectedCourseId: 'course_huy_xps',
+
+      // Weekly Timetable (TKB từ Thứ 2 -> Chủ Nhật)
+      timetable: {
+        1: [
+          { id: 't1_1', time: '04:30 – 06:00', title: 'Luyện đề ĐGNL V-ACT (Toán & Tư duy logic)', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Làm 30 câu tốc độ, bấm giờ', done: true },
+          { id: 't1_2', time: '07:00 – 11:30', title: 'Học chính khóa buổi sáng (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Toán, Hóa, Ngữ văn, Tiếng Anh', done: true },
+          { id: 't1_3', time: '13:30 – 17:00', title: 'Học chính khóa buổi chiều (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Vật lý, Sinh học, Lịch sử', done: false },
+          { id: 't1_4', time: '17:00 – 21:30', title: 'Học thêm Toán nâng cao & Xác suất VD-VDC', teacher: 'Thầy Lương Văn Huy', tag: 'Học thêm', color: 'black', note: 'Xem lại bài giảng Sheet XPS2009', done: false },
+          { id: 't1_5', time: '21:30 – 23:00', title: 'Tổng ôn từ vựng & luyện đề V-ACT tối', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Chữa lỗi sai trong ngày', done: false }
+        ],
+        2: [
+          { id: 't2_1', time: '04:30 – 06:00', title: 'Luyện đề ĐGNL V-ACT (Đọc hiểu & Tiếng Anh)', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Nghỉ học chính khóa cả ngày', done: true },
+          { id: 't2_2', time: '08:00 – 11:30', title: 'Bồi dưỡng HSG Hóa 12 — Chuyên đề Hữu cơ', teacher: 'Cô phụ trách đội tuyển Hóa', tag: 'HSG Hóa', color: 'blue', note: 'Mục tiêu kỳ thi 26/01/2027', done: false },
+          { id: 't2_3', time: '14:00 – 17:00', title: 'Học Video khóa XPS2009 + Làm BTVN', teacher: 'Thầy Lương Văn Huy', tag: 'Khóa học', color: 'black', note: 'Hoàn thành 2 buổi trên Google Sheet', done: false },
+          { id: 't2_4', time: '21:30 – 23:00', title: 'Luyện đề V-ACT & Tổng hợp công thức', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Ghi chú lỗi hay nhầm', done: false }
+        ],
+        3: [
+          { id: 't3_1', time: '04:30 – 06:00', title: 'Luyện đề V-ACT sáng', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Phần Khoa học tự nhiên', done: false },
+          { id: 't3_2', time: '07:00 – 11:30', title: 'Học chính khóa buổi sáng (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Kiểm tra bài cũ môn Hóa & Lý', done: false },
+          { id: 't3_3', time: '13:30 – 17:00', title: 'Học chính khóa buổi chiều (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Thực hành & bài tập trên lớp', done: false },
+          { id: 't3_4', time: '17:00 – 21:30', title: 'Học thêm Toán — Kỹ thuật vách ngăn & Tổ hợp', teacher: 'Thầy Lương Văn Huy', tag: 'Học thêm', color: 'black', note: 'Mang theo tài liệu in sẵn', done: false }
+        ],
+        4: [
+          { id: 't4_1', time: '04:30 – 06:00', title: 'Luyện đề V-ACT sáng', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Phân tích số liệu', done: false },
+          { id: 't4_2', time: '07:00 – 11:30', title: 'Học chính khóa buổi sáng (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Chiều Thứ 5 được nghỉ', done: false },
+          { id: 't4_3', time: '14:30 – 17:30', title: 'Ôn thi HSG Hóa 12 — Bài tập định lượng', teacher: 'Tự học / Tài liệu đội tuyển', tag: 'HSG Hóa', color: 'black', note: 'Giải 1 đề thi tỉnh các năm trước', done: false },
+          { id: 't4_4', time: '21:30 – 23:00', title: 'Luyện đề V-ACT tối', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Ôn lại câu sai', done: false }
+        ],
+        5: [
+          { id: 't5_1', time: '04:30 – 06:00', title: 'Luyện đề V-ACT sáng', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Toán thực tế & Logic', done: false },
+          { id: 't5_2', time: '07:00 – 11:30', title: 'Học chính khóa buổi sáng (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Nộp bài tập nhóm Hóa 12A3', done: false },
+          { id: 't5_3', time: '13:30 – 17:00', title: 'Học chính khóa buổi chiều (Lớp 12A3)', teacher: 'GV Bộ môn THPT Nguyễn An Ninh', tag: 'Chính khóa', color: 'blue', note: 'Sinh hoạt cuối tuần', done: false },
+          { id: 't5_4', time: '17:00 – 21:30', title: 'Học thêm Toán — Thực chiến đề THPT QG', teacher: 'Thầy Lương Văn Huy', tag: 'Học thêm', color: 'black', note: 'Bấm giờ 90 phút', done: false }
+        ],
+        6: [
+          { id: 't6_1', time: '04:30 – 06:00', title: 'Luyện đề ĐGNL V-ACT Full Test (Phần 1)', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Thứ 7 nghỉ chính khóa', done: true },
+          { id: 't6_2', time: '08:30 – 11:30', title: 'Học khóa Google Sheets — Chương 4 Xác suất', teacher: 'Thầy Lương Văn Huy (XPS2009)', tag: 'Khóa học', color: 'blue', note: 'Xem video YouTube + làm Tài liệu & check Đáp án', done: false },
+          { id: 't6_3', time: '14:00 – 17:00', title: 'Tổng ôn HSG Hóa 12 & Vật lý THPT QG', teacher: 'Tự học', tag: 'HSG Hóa', color: 'black', note: 'Làm đề minh họa 2027', done: false },
+          { id: 't6_4', time: '21:30 – 23:00', title: 'Chữa đề V-ACT & Lập kế hoạch tuần mới', teacher: 'Tự học', tag: 'V-ACT', color: 'maroon', note: 'Cập nhật tiến độ các bảng Sheet', done: false }
+        ],
+        7: [
+          { id: 't7_1', time: '08:30 – 11:00', title: 'Học thêm Toán sáng Chủ Nhật', teacher: 'Thầy Lương Văn Huy', tag: 'Học thêm', color: 'black', note: 'Tổng kết kiến thức tuần', done: false },
+          { id: 't7_2', time: '14:30 – 17:00', title: 'Ôn bài trên lớp & hoàn thiện BTVN', teacher: 'Tự học', tag: 'Ôn tập', color: 'blue', note: 'Chuẩn bị bài cho tuần mới', done: false },
+          { id: 't7_3', time: '20:30 – 22:30', title: 'Thư giãn nhẹ & đọc ghi chú nhanh', teacher: 'Cá nhân', tag: 'Relax', color: 'maroon', note: 'Ngủ sớm giữ sức khỏe', done: false }
+        ]
+      },
+
+      // Courses synced from Google Sheets (pre-populated with Image 2 & Image 3 exact structure)
+      courses: [
+        {
+          id: 'course_huy_xps',
+          title: 'Thầy Lương Văn Huy (Huy XPS2009)',
+          teacher: 'Thầy Lương Văn Huy',
+          sheetUrl: '',
+          sheetId: '',
+          sheetTab: 'TỔNG HỢP',
+          accessMode: 'Chỉ xem • Đồng bộ bản gốc',
+          lastSynced: '21/11/2026 22:05',
+          chapters: [
+            {
+              id: 'ch_huy_3',
+              title: 'CHƯƠNG 3 - ỨNG DỤNG TÍCH PHÂN',
+              expanded: false,
+              lessons: [
+                {
+                  id: 'ls_huy_15',
+                  title: 'Buổi 15: 16 - ỨNG DỤNG TP - BT VẬT LÝ (03/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h15_v', type: 'video', label: 'Video bài giảng YouTube (Buổi 15)', url: 'https://youtu.be/Dy55fm89Y', done: true },
+                    { id: 'i_h15_d', type: 'doc', label: 'TÀI LIỆU (Google Drive)', url: 'https://drive.google.com', done: true },
+                    { id: 'i_h15_a', type: 'answer', label: 'ĐÁP ÁN chi tiết', url: 'https://drive.google.com', done: true }
+                  ]
+                },
+                {
+                  id: 'ls_huy_16',
+                  title: 'Buổi 16: 18 - THỰC CHIẾN BT THỰC TẾ 01 (05/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h16_v', type: 'video', label: 'Video bài giảng YouTube (Buổi 16)', url: 'https://youtu.be/VVE91XsBZ0', done: true },
+                    { id: 'i_h16_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: true },
+                    { id: 'i_h16_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_huy_17',
+                  title: 'Buổi 17: 19 - THỰC CHIẾN BT THỰC TẾ 02 (08/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h17_v', type: 'video', label: 'Video bài giảng YouTube (Buổi 17)', url: 'https://youtu.be/qV849ZNq7ca', done: false },
+                    { id: 'i_h17_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h17_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_huy_18',
+                  title: 'Buổi 18: 20 - THỰC CHIẾN BT THỰC TẾ 03 (12/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h18_v', type: 'video', label: 'Video bài giảng YouTube (Buổi 18)', url: 'https://youtu.be/Eo0bXkQoh', done: false },
+                    { id: 'i_h18_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h18_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                }
+              ]
+            },
+            {
+              id: 'ch_huy_4',
+              title: 'CHƯƠNG 4 - XÁC SUẤT',
+              expanded: true,
+              lessons: [
+                {
+                  id: 'ls_h4_1',
+                  title: 'Buổi 1: KHỞI ĐỘNG BÀI TOÁN ĐẾM VD VDC 01 (17/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h41_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/kr38ceJFFx', done: true },
+                    { id: 'i_h41_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: true },
+                    { id: 'i_h41_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: true }
+                  ]
+                },
+                {
+                  id: 'ls_h4_2',
+                  title: 'Buổi 2: KHỞI ĐỘNG BÀI TOÁN ĐẾM VD VDC 02 (22/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h42_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/1uCJ1B5e2AT', done: true },
+                    { id: 'i_h42_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h42_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_3',
+                  title: 'B03: BÀI TOÁN CHIA KẸO EULER',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h43_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/Wb3S4iX4qPB', done: false },
+                    { id: 'i_h43_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h43_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_4',
+                  title: 'Buổi 4: HOÁN VỊ LẶP - HOÁN VỊ VÒNG TRÒN (26/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h44_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/NUN7m58oYjL', done: false },
+                    { id: 'i_h44_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h44_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_5',
+                  title: 'Buổi 5: KỸ THUẬT PHẦN BÙ (31/10/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h45_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/DyfkDbk3g', done: false },
+                    { id: 'i_h45_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h45_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_6',
+                  title: 'Buổi 6: BÀI TOÁN HÌNH HỌC (02/11/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h46_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/GRg0Zw6xL', done: false },
+                    { id: 'i_h46_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h46_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_7',
+                  title: 'Buổi 7: BÀI TOÁN TÔ MÀU (07/11/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h47_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/G9enIVjpdm', done: false },
+                    { id: 'i_h47_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h47_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_8',
+                  title: 'Buổi 8: BÀI TOÁN XẾP NGƯỜI, CHỌN VẬT, VỊ TRÍ (09/11/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h48_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/kiixElC85m', done: false },
+                    { id: 'i_h48_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h48_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_9',
+                  title: 'BTVN: KHỞI ĐỘNG BÀI TOÁN ĐẾM VD VDC 01',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h49_d', type: 'doc', label: 'TÀI LIỆU BTVN', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h49_a', type: 'answer', label: 'ĐÁP ÁN BTVN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_10',
+                  title: 'Buổi 9: KỸ THUẬT VÁCH NGĂN (14/11/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h410_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/tqbU1rkBja', done: false },
+                    { id: 'i_h410_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h410_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_h4_11',
+                  title: 'Buổi 10: BÀI TOÁN CHỌN SỐ (16/11/2026)',
+                  expanded: false,
+                  items: [
+                    { id: 'i_h411_v', type: 'video', label: 'Video bài giảng YouTube', url: 'https://youtu.be/nfXUIyblyo', done: false },
+                    { id: 'i_h411_d', type: 'doc', label: 'TÀI LIỆU', url: 'https://drive.google.com', done: false },
+                    { id: 'i_h411_a', type: 'answer', label: 'ĐÁP ÁN', url: 'https://drive.google.com', done: false }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          id: 'course_hamso',
+          title: 'Toán 12 — Khóa Nền Tảng Hàm Số',
+          teacher: 'Khóa học mẫu theo ảnh #3',
+          sheetUrl: '',
+          sheetId: '',
+          sheetTab: 'CHƯƠNG 1',
+          accessMode: 'Mẫu giao diện ảnh #3',
+          lastSynced: '21/11/2026 21:40',
+          chapters: [
+            {
+              id: 'ch_hd',
+              title: 'HƯỚNG DẪN HỌC VÀ THÔNG TIN QUAN TRỌNG CẦN NẮM',
+              expanded: false,
+              lessons: [
+                {
+                  id: 'ls_hd_1',
+                  title: 'Lộ trình học & cách nộp BTVN hiệu quả',
+                  expanded: false,
+                  items: [
+                    { id: 'i_hd1_v', type: 'video', label: 'Video hướng dẫn lộ trình', url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', done: true },
+                    { id: 'i_hd1_d', type: 'doc', label: 'File PDF Lộ trình học tập', url: 'https://drive.google.com', done: true }
+                  ]
+                }
+              ]
+            },
+            {
+              id: 'ch_hs_1',
+              title: 'CHƯƠNG 1 - HÀM SỐ',
+              expanded: true,
+              lessons: [
+                {
+                  id: 'ls_t1a1',
+                  title: 'T1A1 - Nền tảng về tính đơn điệu và cực trị của hàm số',
+                  expanded: false,
+                  items: [
+                    { id: 't1a1_v1', type: 'video', label: 'Video 1: Lý thuyết tính đơn điệu', url: 'https://youtube.com', done: false },
+                    { id: 't1a1_v2', type: 'video', label: 'Video 2: Các dạng bài cực trị', url: 'https://youtube.com', done: false },
+                    { id: 't1a1_v3', type: 'video', label: 'Video 3: Chữa bài tập vận dụng', url: 'https://youtube.com', done: false },
+                    { id: 't1a1_d1', type: 'doc', label: 'Tài liệu bài giảng PDF', url: 'https://drive.google.com', done: false },
+                    { id: 't1a1_d2', type: 'answer', label: 'Đáp án bài tập tự luyện', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_t1a2',
+                  title: 'T1A2 - Nền tảng về Min Max của hàm số',
+                  expanded: false,
+                  items: [
+                    { id: 't1a2_v1', type: 'video', label: 'Video 1: Phương pháp tìm GTLN-GTNN', url: 'https://youtube.com', done: false },
+                    { id: 't1a2_v2', type: 'video', label: 'Video 2: Min Max hàm hợp', url: 'https://youtube.com', done: false },
+                    { id: 't1a2_v3', type: 'video', label: 'Video 3: Chữa BTVN', url: 'https://youtube.com', done: false },
+                    { id: 't1a2_d1', type: 'doc', label: 'Tài liệu Min Max PDF', url: 'https://drive.google.com', done: false },
+                    { id: 't1a2_d2', type: 'answer', label: 'Đáp án chi tiết', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_t1a3',
+                  title: 'T1A3 - Nền tảng về tiệm cận của đồ thị hàm số',
+                  expanded: false,
+                  items: [
+                    { id: 't1a3_v1', type: 'video', label: 'Video 1: Tiệm cận đứng & tiệm cận ngang', url: 'https://youtube.com', done: true },
+                    { id: 't1a3_v2', type: 'video', label: 'Video 2: Tiệm cận xiên & tham số m', url: 'https://youtube.com', done: false },
+                    { id: 't1a3_d1', type: 'doc', label: 'Tài liệu tiệm cận PDF', url: 'https://drive.google.com', done: false },
+                    { id: 't1a3_d2', type: 'answer', label: 'Đáp án & lời giải', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_t1a4',
+                  title: 'T1A4 - Khảo sát sự biến thiên và vẽ đồ thị hàm số',
+                  expanded: false,
+                  items: [
+                    { id: 't1a4_v1', type: 'video', label: 'Video 1: Hàm bậc 3 & bậc 4', url: 'https://youtube.com', done: false },
+                    { id: 't1a4_v2', type: 'video', label: 'Video 2: Hàm phân thức bậc 1/1 & 2/1', url: 'https://youtube.com', done: false },
+                    { id: 't1a4_v3', type: 'video', label: 'Video 3: Đọc đồ thị suy luận nhanh', url: 'https://youtube.com', done: false },
+                    { id: 't1a4_d1', type: 'doc', label: 'Tài liệu khảo sát hàm số', url: 'https://drive.google.com', done: false },
+                    { id: 't1a4_d2', type: 'answer', label: 'Đáp án tự luyện', url: 'https://drive.google.com', done: false }
+                  ]
+                },
+                {
+                  id: 'ls_t1a5',
+                  title: 'T1A5 - Toán thực tế hàm số',
+                  expanded: false,
+                  items: [
+                    { id: 't1a5_v1', type: 'video', label: 'Video 1: Tối ưu chi phí & diện tích', url: 'https://youtube.com', done: false },
+                    { id: 't1a5_v2', type: 'video', label: 'Video 2: Thực chiến bài toán mới 2027', url: 'https://youtube.com', done: false },
+                    { id: 't1a5_d1', type: 'doc', label: 'Tuyển tập 40 bài toán thực tế', url: 'https://drive.google.com', done: false },
+                    { id: 't1a5_d2', type: 'answer', label: 'Đáp án giải chi tiết', url: 'https://drive.google.com', done: false }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+
+      // Tasks for Công việc (matching Image 1 left panel)
+      workItems: [
+        { id: 'w1', title: 'Hoàn thành BTVN Buổi 9 (Vách ngăn)', subtitle: 'Thầy Lương Văn Huy', status: 'pending', category: 'kho' },
+        { id: 'w2', title: 'Ôn đề HSG Hóa 12 — Đề số 04', subtitle: 'Đội tuyển Hóa 12A3', status: 'pending', category: 'kho' },
+        { id: 'w3', title: 'Luyện đề V-ACT Đợt 1 (2027)', subtitle: 'Tự học sáng & tối', status: 'doing', category: 'kho' },
+        { id: 'w4', title: 'Chữa bài tập Tiệm cận T1A3', subtitle: 'Khóa Hàm số', status: 'doing', category: 'kho' },
+        { id: 'w5', title: 'Chuẩn bị slide Hóa 12A3 - Phần III Tơ', subtitle: 'Nhóm Hóa 12A3', status: 'doing', category: 'booking' },
+        { id: 'w6', title: 'Tổng ôn Buổi 1-2 Xác suất VD VDC', subtitle: 'XPS2009', status: 'done', category: 'kho' },
+        { id: 'w7', title: 'Cập nhật lịch học tháng 11', subtitle: 'Forest OS', status: 'done', category: 'booking' }
+      ],
+
+      // Monthly Calendar Events (Tháng 11, 2026 — matching Image 1 pills)
+      calendarEvents: [
+        { id: 'ce1', date: '2026-11-02', title: 'Buổi 6: Bài toán hình học', type: 'study', style: 'blue' },
+        { id: 'ce2', date: '2026-11-05', title: 'Luyện đề HSG Hóa #01', type: 'study', style: 'maroon' },
+        { id: 'ce3', date: '2026-11-07', title: 'Buổi 7: Bài toán tô màu', type: 'study', style: 'blue' },
+        { id: 'ce4', date: '2026-11-09', title: 'Buổi 8: Xếp người, chọn vật', type: 'study', style: 'blue' },
+        { id: 'ce5', date: '2026-11-11', title: 'Hạn nộp BTVN Xác suất', type: 'deadline', style: 'alert' },
+        { id: 'ce6', date: '2026-11-14', title: 'Buổi 9: Kỹ thuật vách ngăn', type: 'study', style: 'maroon' },
+        { id: 'ce7', date: '2026-11-16', title: 'Buổi 10: Bài toán chọn số', type: 'study', style: 'black' },
+        { id: 'ce8', date: '2026-11-16', title: 'Hạn đăng bài nhóm Hóa', type: 'deadline', style: 'alert' },
+        { id: 'ce9', date: '2026-11-19', title: 'Thi thử V-ACT nội bộ', type: 'study', style: 'maroon' },
+        { id: 'ce10', date: '2026-11-21', title: 'Đồng bộ khóa học Sheets', type: 'study', style: 'blue' },
+        { id: 'ce11', date: '2026-11-21', title: 'Tổng ôn HSG Hóa 12', type: 'study', style: 'maroon' },
+        { id: 'ce12', date: '2026-11-21', title: 'Hạn hoàn thành BTVN B09', type: 'deadline', style: 'alert' },
+        { id: 'ce13', date: '2026-11-22', title: 'Học thêm Toán sáng CN', type: 'study', style: 'black' },
+        { id: 'ce14', date: '2026-11-25', title: 'Kiểm tra 15p Vật lý 12', type: 'deadline', style: 'alert' },
+        { id: 'ce15', date: '2026-11-28', title: 'Thi thử THPT QG lần 1', type: 'study', style: 'maroon' }
+      ],
+
+      reminders: [
+        { id: 'r1', title: 'Đồng bộ link Google Sheet mới của thầy Huy', time: 'Hôm nay, 22:30', done: false },
+        { id: 'r2', title: 'In tài liệu Chương 4 Xác suất (Buổi 9 & 10)', time: 'Chủ Nhật, 07:30', done: false },
+        { id: 'r3', title: 'Ôn lại công thức tính nhanh cực trị hàm bậc 3', time: 'Thứ Hai, 05:00', done: true }
+      ],
+
+      finance: [
+        { id: 'f1', title: 'Tiền tiêu vặt tháng 11', amount: 1500000, type: 'income', date: '01/11/2026' },
+        { id: 'f2', title: 'In tài liệu khóa Toán & Hóa', amount: 145000, type: 'expense', date: '10/11/2026' },
+        { id: 'f3', title: 'Mua sổ ghi chép & bút highlight', amount: 85000, type: 'expense', date: '15/11/2026' }
+      ],
+
+      notes: [
+        { id: 'n1', text: 'Nhớ đăng nhập Google trong mục Học tập để tự động đồng bộ mọi bảng Sheet chỉ xem của thầy cô.', createdAt: '21/11/2026' },
+        { id: 'n2', text: 'Kỳ thi HSG Hóa 12 diễn ra ngày 26/01/2027 — ưu tiên hoàn thành chuyên đề hữu cơ trước tháng 12.', createdAt: '20/11/2026' }
+      ],
+
+      projects: [
+        { id: 'p1', name: 'Google Sheets Khóa học', desc: 'Quản lý bảng tính bài giảng & tự động đồng bộ', url: 'https://docs.google.com/spreadsheets', icon: 'table', color: 'emerald' },
+        { id: 'p2', name: 'Google Drive Tài liệu', desc: 'Kho PDF đề thi thử & tài liệu 12A3', url: 'https://drive.google.com', icon: 'hard-drive', color: 'blue' },
+        { id: 'p3', name: 'YouTube Bài giảng', desc: 'Kênh học Toán, Lý, Hóa THPT QG', url: 'https://www.youtube.com', icon: 'play-circle', color: 'rose' },
+        { id: 'p4', name: 'Canva Thuyết trình 12A3', desc: 'Thiết kế slide báo cáo nhóm', url: 'https://www.canva.com', icon: 'palette', color: 'indigo' }
+      ],
+
+      archived: [
+        { id: 'a1', title: 'Hoàn thành Chương 2 Hình học Oxyz cơ bản', archivedAt: '14/11/2026' }
+      ]
+    };
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return structuredClone(DEFAULT_STATE);
+        const parsed = JSON.parse(raw);
+        return {
+          ...structuredClone(DEFAULT_STATE),
+          ...parsed,
+          googleAuth: { ...structuredClone(DEFAULT_STATE.googleAuth), ...(parsed.googleAuth || {}) }
+        };
+      } catch (e) {
+        return structuredClone(DEFAULT_STATE);
+      }
+    }
+
+    let state = loadState();
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        // Ignore storage quota / sandbox restrictions
+      }
+    }
+
+    // =========================================================================
+    // TOAST & MODAL UTILITIES (Zero alert/confirm/prompt)
+    // =========================================================================
+    function showToast(message, type = 'info') {
+      const stack = document.getElementById('toastStack');
+      if (!stack) return;
+      const el = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-900 text-white border-emerald-700',
+        error: 'bg-rose-900 text-white border-rose-700',
+        info: 'bg-slate-900 text-white border-slate-700'
+      };
+      el.className = `toast-enter pointer-events-auto px-4 py-2.5 rounded-2xl border shadow-lg text-xs font-medium flex items-center gap-2 max-w-sm ${colors[type] || colors.info}`;
+      el.textContent = nfc(message);
+      stack.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s ease';
+        setTimeout(() => el.remove(), 260);
+      }, 3200);
+    }
+
+    function openModal(html) {
+      const overlay = document.getElementById('modalOverlay');
+      const box = document.getElementById('modalBox');
+      box.innerHTML = html;
+      overlay.classList.remove('hidden');
+      overlay.classList.add('flex');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeModal() {
+      const overlay = document.getElementById('modalOverlay');
+      overlay.classList.add('hidden');
+      overlay.classList.remove('flex');
+    }
+
+    document.getElementById('modalOverlay').addEventListener('click', (e) => {
+      if (e.target.id === 'modalOverlay') closeModal();
+    });
+
+    // =========================================================================
+    // GOOGLE SIGN-IN (GIS OAuth 2.0) & UNIVERSAL GOOGLE SHEETS AUTO-SYNC ENGINE
+    // =========================================================================
+    let gisLoaded = false;
+
+    function loadGisScript() {
+      return new Promise((resolve, reject) => {
+        if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+          gisLoaded = true;
+          return resolve();
+        }
+        const existing = document.getElementById('gis-script');
+        if (existing) {
+          existing.addEventListener('load', () => { gisLoaded = true; resolve(); });
+          existing.addEventListener('error', () => reject(new Error('Không thể tải Google Identity Services')));
+          return;
+        }
+        const s = document.createElement('script');
+        s.id = 'gis-script';
+        s.src = 'https://accounts.google.com/gsi/client';
+        s.async = true;
+        s.defer = true;
+        s.onload = () => { gisLoaded = true; resolve(); };
+        s.onerror = () => reject(new Error('Không thể tải thư viện đăng nhập Google'));
+        document.head.appendChild(s);
+      });
+    }
+
+    async function triggerGoogleSignIn(clientIdInput) {
+      const cid = (clientIdInput || state.googleAuth.clientId || '').trim();
+      if (!cid) {
+        showToast('Vui lòng nhập Google OAuth Client ID để mở cửa sổ đăng nhập Google.', 'error');
+        return;
+      }
+      state.googleAuth.clientId = cid;
+      saveState();
+
+      try {
+        await loadGisScript();
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: cid,
+          scope: 'https://www.googleapis.com/auth/spreadsheets.readonly https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email',
+          callback: async (resp) => {
+            if (resp.error) {
+              showToast('Đăng nhập Google bị hủy hoặc gặp lỗi: ' + resp.error, 'error');
+              return;
+            }
+            state.googleAuth.accessToken = resp.access_token;
+            state.googleAuth.tokenExpiresAt = Date.now() + (Number(resp.expires_in || 3600) * 1000);
+            state.googleAuth.signedIn = true;
+            try {
+              const uRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: 'Bearer ' + resp.access_token }
+              });
+              if (uRes.ok) {
+                const u = await uRes.json();
+                state.googleAuth.user = {
+                  name: nfc(u.name || 'Người dùng Google'),
+                  email: u.email || '',
+                  picture: u.picture || ''
+                };
+              }
+            } catch (e) {
+              state.googleAuth.user = { name: 'Tài khoản Google', email: 'Đã kết nối quyền đọc Sheets', picture: '' };
+            }
+            saveState();
+            updateGoogleBadges();
+            closeModal();
+            showToast('Đăng nhập Google thành công! Bạn đã có thể đồng bộ mọi Google Sheet.', 'success');
+            renderCurrentView();
+          }
+        });
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+      } catch (err) {
+        showToast('Không thể khởi tạo đăng nhập Google trong môi trường hiện tại. Bạn vẫn có thể đồng bộ Sheet chia sẻ công khai hoặc dán dữ liệu.', 'error');
+      }
+    }
+
+    function signOutGoogle() {
+      state.googleAuth.signedIn = false;
+      state.googleAuth.accessToken = '';
+      state.googleAuth.tokenExpiresAt = 0;
+      state.googleAuth.user = null;
+      saveState();
+      updateGoogleBadges();
+      showToast('Đã đăng xuất tài khoản Google.', 'info');
+      renderCurrentView();
+    }
+
+    function extractSheetId(urlOrId) {
+      const s = (urlOrId || '').trim();
+      const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+      if (m) return m[1];
+      if (/^[a-zA-Z0-9-_]{20,}$/.test(s)) return s;
+      return '';
+    }
+
+    function extractYouTubeId(url) {
+      if (!url) return '';
+      const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|live\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+      return m ? m[1] : '';
+    }
+
+    function classifyLink(url, labelText) {
+      const u = (url || '').toLowerCase();
+      const l = (labelText || '').toLowerCase();
+      if (u.includes('youtu.be') || u.includes('youtube.com') || l.includes('video') || l.includes('live')) return 'video';
+      if (l.includes('đáp án') || l.includes('dap an') || l.includes('lời giải') || l.includes('key')) return 'answer';
+      return 'doc';
+    }
+
+    // Universal parser converting rows (from Sheets API v4, GViz JSON, or pasted TSV/CSV) into Chapters -> Lessons -> Items
+    // Preserves existing user completion state when re-syncing from master sheet!
+    function parseRowsToChapters(rows, existingCourse) {
+      const oldDoneMap = {};
+      if (existingCourse && existingCourse.chapters) {
+        existingCourse.chapters.forEach(ch => {
+          ch.lessons.forEach(ls => {
+            ls.items.forEach(it => {
+              const key = (nfc(ls.title) + '||' + nfc(it.label) + '||' + (it.url || '')).toLowerCase();
+              oldDoneMap[key] = !!it.done;
+            });
+          });
+        });
+      }
+
+      const chapters = [];
+      let currentChapter = null;
+
+      const ensureChapter = (title) => {
+        const cleanTitle = nfc(title || 'DANH SÁCH BÀI HỌC').trim();
+        currentChapter = {
+          id: uid('ch'),
+          title: cleanTitle,
+          expanded: chapters.length === 0,
+          lessons: []
+        };
+        chapters.push(currentChapter);
+      };
+
+      rows.forEach((row, rIdx) => {
+        // Each cell is { text: string, url: string }
+        const nonEmpty = row.filter(c => (c.text && c.text.trim()) || (c.url && c.url.trim()));
+        if (!nonEmpty.length) return;
+
+        const combinedText = nonEmpty.map(c => c.text.trim()).filter(Boolean).join(' ').trim();
+        const links = [];
+        row.forEach((cell, cIdx) => {
+          const text = nfc(cell.text || '').trim();
+          let url = (cell.url || '').trim();
+          if (!url && /^https?:\/\//i.test(text)) {
+            url = text;
+          }
+          if (url && /^https?:\/\//i.test(url)) {
+            const type = classifyLink(url, text);
+            const niceLabel = /^https?:\/\//i.test(text)
+              ? (type === 'video' ? 'Video bài giảng YouTube' : type === 'answer' ? 'ĐÁP ÁN' : 'TÀI LIỆU')
+              : text;
+            links.push({ type, label: niceLabel, url });
+          }
+        });
+
+        // Detect chapter header: starts with CHƯƠNG / PHẦN / CHUYÊN ĐỀ / UNIT / MODULE or single wide text without links
+        const isChapterKeyword = /^(chương|chuong|phần|phan|chuyên đề|chuyen de|unit|module|tuần|tuan|giai đoạn|hướng dẫn)\b/i.test(combinedText);
+        if (links.length === 0 && (isChapterKeyword || (nonEmpty.length === 1 && combinedText.length > 5 && combinedText === combinedText.toUpperCase()))) {
+          // Skip sheet main title on row 0 if it says KHÓA ...
+          if (rIdx === 0 && /^khóa\s/i.test(combinedText)) return;
+          ensureChapter(combinedText);
+          return;
+        }
+
+        // Skip table header rows like STT | TÊN BÀI | LINK
+        if (links.length === 0 && /^(stt|buổi|tên bài|nội dung|chưa live)/i.test(combinedText)) return;
+
+        // Find lesson title: longest non-URL, non-pure-number cell
+        const titleCandidates = row
+          .map(c => nfc(c.text || '').trim())
+          .filter(t => t && !/^https?:\/\//i.test(t) && !/^\d+$/.test(t) && !/^(tài liệu|đáp án|link|xem|file)$/i.test(t));
+
+        const lessonTitle = titleCandidates.sort((a, b) => b.length - a.length)[0] || combinedText;
+        if (!lessonTitle || lessonTitle.length < 2) return;
+
+        if (!currentChapter) ensureChapter('NỘI DUNG KHÓA HỌC');
+
+        const items = links.length > 0
+          ? links.map(lk => {
+              const key = (lessonTitle + '||' + lk.label + '||' + lk.url).toLowerCase();
+              return {
+                id: uid('it'),
+                type: lk.type,
+                label: lk.label,
+                url: lk.url,
+                done: !!oldDoneMap[key]
+              };
+            })
+          : [{
+              id: uid('it'),
+              type: 'doc',
+              label: 'Hoàn thành nội dung buổi học',
+              url: '',
+              done: !!oldDoneMap[(lessonTitle + '||hoàn thành nội dung buổi học||').toLowerCase()]
+            }];
+
+        currentChapter.lessons.push({
+          id: uid('ls'),
+          title: lessonTitle,
+          expanded: false,
+          items
+        });
+      });
+
+      if (chapters.length > 0) chapters[chapters.length - 1].expanded = true;
+      return chapters;
+    }
+
+    // Fetch live data from Google Sheet (OAuth API v4 first if signed in -> fallback GViz public JSON)
+    async function syncCourseFromGoogleSheet(course) {
+      const sheetId = extractSheetId(course.sheetUrl || course.sheetId);
+      if (!sheetId) {
+        showToast('Khóa học này chưa gắn link Google Sheet. Hãy bấm "Thêm Sheet" để kết nối.', 'info');
+        return false;
+      }
+
+      const nowStr = new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+      const hasValidToken = state.googleAuth.signedIn && state.googleAuth.accessToken && Date.now() < state.googleAuth.tokenExpiresAt;
+
+      // Method 1: Official Google Sheets API v4 with OAuth token (reads private 'Chỉ xem' sheets + cell hyperlinks!)
+      if (hasValidToken) {
+        try {
+          const tabParam = course.sheetTab ? `&ranges=${encodeURIComponent(course.sheetTab)}` : '';
+          const apiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?includeGridData=true${tabParam}`;
+          const res = await fetch(apiUrl, {
+            headers: { Authorization: 'Bearer ' + state.googleAuth.accessToken }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            const sheetObj = (data.sheets && data.sheets[0]) || null;
+            if (sheetObj && sheetObj.data && sheetObj.data[0] && sheetObj.data[0].rowData) {
+              const rows = sheetObj.data[0].rowData.map(r =>
+                (r.values || []).map(v => ({
+                  text: v.formattedValue || '',
+                  url: v.hyperlink || (v.textFormatRuns && v.textFormatRuns.find(tr => tr.format && tr.format.link)?.format.link.uri) || ''
+                }))
+              );
+              const parsedChapters = parseRowsToChapters(rows, course);
+              if (parsedChapters.length > 0) {
+                course.title = course.title || nfc(data.properties?.title || 'Khóa học Google Sheets');
+                course.sheetTab = sheetObj.properties?.title || course.sheetTab || 'Sheet1';
+                course.chapters = parsedChapters;
+                course.lastSynced = nowStr;
+                course.accessMode = 'Đã đồng bộ Google OAuth • Bản gốc';
+                saveState();
+                showToast(`Đã đồng bộ "${course.title}" từ Google Sheet gốc (${parsedChapters.length} chương)!`, 'success');
+                return true;
+              }
+            }
+          }
+        } catch (e) {
+          // Fall through to public GViz
+        }
+      }
+
+      // Method 2: Public Google Visualization API (works for sheets shared "Bất kỳ ai có đường liên kết")
+      try {
+        const sheetQuery = course.sheetTab ? `&sheet=${encodeURIComponent(course.sheetTab)}` : '';
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetQuery}`;
+        const res = await fetch(gvizUrl);
+        if (res.ok) {
+          const rawText = await res.text();
+          const jsonMatch = rawText.match(/google\.visualization\.Query\.setResponse\(([\s\S]+)\);?/);
+          if (jsonMatch) {
+            const payload = JSON.parse(jsonMatch[1]);
+            const rows = (payload.table?.rows || []).map(r =>
+              (r.c || []).map(cell => ({
+                text: cell && (cell.f || cell.v) != null ? String(cell.f || cell.v) : '',
+                url: ''
+              }))
+            );
+            const parsedChapters = parseRowsToChapters(rows, course);
+            if (parsedChapters.length > 0) {
+              course.chapters = parsedChapters;
+              course.lastSynced = nowStr;
+              course.accessMode = 'Đồng bộ công khai • Bản gốc';
+              saveState();
+              showToast(`Đã đồng bộ "${course.title}" thành công từ bản gốc!`, 'success');
+              return true;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback notice below
+      }
+
+      showToast('Không thể đọc trực tiếp Sheet riêng tư khi chưa đăng nhập Google OAuth (hoặc Sheet bị hạn chế truy cập). Hãy đăng nhập Google hoặc dán bảng trực tiếp.', 'error');
+      return false;
+    }
+
+    // =========================================================================
+    // PROGRESS CALCULATIONS
+    // =========================================================================
+    function getLessonStats(lesson) {
+      const videos = lesson.items.filter(i => i.type === 'video').length;
+      const docs = lesson.items.filter(i => i.type !== 'video').length;
+      const total = lesson.items.length;
+      const done = lesson.items.filter(i => i.done).length;
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      return { videos, docs, total, done, pct };
+    }
+
+    function getCourseStats(course) {
+      let totalItems = 0, doneItems = 0, totalLessons = 0, completedLessons = 0;
+      (course.chapters || []).forEach(ch => {
+        (ch.lessons || []).forEach(ls => {
+          totalLessons++;
+          const st = getLessonStats(ls);
+          totalItems += st.total;
+          doneItems += st.done;
+          if (st.total > 0 && st.done === st.total) completedLessons++;
+        });
+      });
+      const pct = totalItems > 0 ? Math.round((doneItems / totalItems) * 100) : 0;
+      return { totalItems, doneItems, totalLessons, completedLessons, pct };
+    }
+
+    // =========================================================================
+    // VIEW RENDERERS
+    // =========================================================================
+    function applyTheme() {
+      document.body.className = `theme-${state.theme}`;
+      document.documentElement.style.setProperty('--glass-blur', `${state.glassBlur}px`);
+    }
+
+    function updateGoogleBadges() {
+      const signed = state.googleAuth.signedIn && state.googleAuth.user;
+      const avatar = document.getElementById('sidebarAvatar');
+      const name = document.getElementById('sidebarUserName');
+      const sub = document.getElementById('sidebarUserSub');
+      const mLabel = document.getElementById('mobileGoogleLabel');
+      const mDot = document.getElementById('mobileGoogleDot');
+
+      if (signed) {
+        name.textContent = state.googleAuth.user.name;
+        sub.textContent = state.googleAuth.user.email || 'Đã kết nối Google';
+        if (state.googleAuth.user.picture) {
+          avatar.innerHTML = `<img src="${state.googleAuth.user.picture}" alt="Avatar" class="w-8 h-8 rounded-full object-cover" />`;
+        } else {
+          avatar.textContent = (state.googleAuth.user.name || 'G')[0].toUpperCase();
+        }
+        mLabel.textContent = state.googleAuth.user.name.split(' ').slice(-1)[0];
+        mDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+      } else {
+        name.textContent = 'Đăng nhập Google';
+        sub.textContent = 'Đồng bộ Google Sheets';
+        avatar.textContent = 'G';
+        mLabel.textContent = 'Đăng nhập Google';
+        mDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+      }
+    }
+
+    function setActiveNav(view) {
+      state.activeView = view;
+      saveState();
+      document.querySelectorAll('#mainNav .nav-btn, aside .nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.view === view);
+      });
+      closeMobileSidebar();
+      renderCurrentView();
+    }
+
+    function renderCurrentView() {
+      const container = document.getElementById('viewContainer');
+      if (!container) return;
+
+      switch (state.activeView) {
+        case 'dashboard': container.innerHTML = renderDashboardView(); break;
+        case 'work': container.innerHTML = renderWorkView(); break;
+        case 'study': container.innerHTML = renderStudyView(); break;
+        case 'reminder': container.innerHTML = renderReminderView(); break;
+        case 'finance': container.innerHTML = renderFinanceView(); break;
+        case 'quicknote': container.innerHTML = renderQuickNoteView(); break;
+        case 'project': container.innerHTML = renderProjectView(); break;
+        case 'relax': container.innerHTML = renderRelaxView(); break;
+        case 'theme': container.innerHTML = renderThemeView(); break;
+        case 'archive': container.innerHTML = renderArchiveView(); break;
+        case 'settings': container.innerHTML = renderSettingsView(); break;
+        default: container.innerHTML = renderStudyView();
+      }
+      if (window.lucide) lucide.createIcons();
+      bindViewEvents();
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. HỌC TẬP & GOOGLE SHEETS VIEW (TKB TUẦN + KHÓA HỌC PROGRESS BARS)
+    // -------------------------------------------------------------------------
+    function renderStudyView() {
+      const isTkb = state.studySubTab === 'tkb';
+      const signed = state.googleAuth.signedIn && state.googleAuth.user;
+
+      return `
+        <div class="space-y-5">
+          <!-- Header Row -->
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Học tập</h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Thời khóa biểu theo thứ & đồng bộ khóa học trực tiếp từ Google Sheets gốc</p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2.5">
+              <!-- Sub-tab switcher -->
+              <div class="glass-strong p-1 rounded-full inline-flex items-center gap-1">
+                <button type="button" data-study-tab="courses" class="px-4 py-1.5 rounded-full text-xs font-bold transition ${!isTkb ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">
+                  Khóa học (Sheets)
+                </button>
+                <button type="button" data-study-tab="tkb" class="px-4 py-1.5 rounded-full text-xs font-bold transition ${isTkb ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600 hover:text-slate-900'}">
+                  Thời khóa biểu tuần
+                </button>
+              </div>
+
+              <!-- Google Sign-in Button -->
+              <button type="button" id="openGoogleAuthBtn" class="px-3.5 py-2 rounded-full text-xs font-semibold border shadow-sm transition flex items-center gap-2 ${signed ? 'bg-emerald-50 border-emerald-200 text-emerald-800 hover:bg-emerald-100' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'}">
+                <svg class="w-4 h-4" viewBox="0 0 24 24"><path fill="#EA4335" d="M12 5.04c1.94 0 3.51.68 4.75 1.81l3.51-3.51C18.14 1.38 15.34 0 12 0 7.31 0 3.25 2.69 1.28 6.61l4.08 3.17C6.34 6.96 8.95 5.04 12 5.04z"/><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58l3.86 3c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#FBBC05" d="M5.36 14.22A7.12 7.12 0 0 1 4.98 12c0-.77.13-1.52.38-2.22L1.28 6.61A11.97 11.97 0 0 0 0 12c0 1.94.46 3.77 1.28 5.39l4.08-3.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.05 0-5.66-1.92-6.64-4.74l-4.08 3.17C3.25 21.31 7.31 24 12 24z"/></svg>
+                <span>${signed ? state.googleAuth.user.name : 'Đăng nhập Google'}</span>
+              </button>
+            </div>
+          </div>
+
+          ${isTkb ? renderWeeklyTimetablePanel() : renderGoogleSheetsCoursesPanel()}
+        </div>
+      `;
+    }
+
+    // TKB Tuần: Chỉ hiện 1 thứ khi bấm chọn (Thứ 2 -> Chủ Nhật) + trang trí đẹp mắt
+    function renderWeeklyTimetablePanel() {
+      const days = [
+        { num: 1, short: 'Thứ 2', full: 'Thứ Hai' },
+        { num: 2, short: 'Thứ 3', full: 'Thứ Ba' },
+        { num: 3, short: 'Thứ 4', full: 'Thứ Tư' },
+        { num: 4, short: 'Thứ 5', full: 'Thứ Năm' },
+        { num: 5, short: 'Thứ 6', full: 'Thứ Sáu' },
+        { num: 6, short: 'Thứ 7', full: 'Thứ Bảy' },
+        { num: 7, short: 'Chủ Nhật', full: 'Chủ Nhật' }
+      ];
+
+      const currentDayObj = days.find(d => d.num === state.selectedDay) || days[0];
+      const slots = state.timetable[state.selectedDay] || [];
+      const doneCount = slots.filter(s => s.done).length;
+      const pct = slots.length ? Math.round((doneCount / slots.length) * 100) : 0;
+
+      const colorMap = {
+        maroon: { badge: 'bg-rose-900 text-white', border: 'border-l-4 border-l-rose-900' },
+        blue: { badge: 'bg-sky-700 text-white', border: 'border-l-4 border-l-sky-600' },
+        black: { badge: 'bg-slate-900 text-white', border: 'border-l-4 border-l-slate-900' }
+      };
+
+      return `
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+          <!-- Left Main TKB Card -->
+          <div class="xl:col-span-8 glass-strong rounded-3xl p-5 sm:p-6">
+            <!-- Day Selector Bar (Thứ 2 -> Chủ Nhật) -->
+            <div class="flex items-center justify-between flex-wrap gap-3 mb-5">
+              <div class="flex items-center gap-2">
+                <span class="w-9 h-9 rounded-2xl bg-emerald-900/10 text-emerald-900 flex items-center justify-center">
+                  <i data-lucide="calendar-days" class="w-5 h-5"></i>
+                </span>
+                <div>
+                  <h2 class="text-base font-bold">Chọn thứ để xem lịch học</h2>
+                  <p class="text-xs text-slate-500">Gọn gàng — chỉ hiển thị các khung giờ của thứ đang chọn</p>
+                </div>
+              </div>
+              <button type="button" id="addTkbSlotBtn" class="px-3.5 py-2 rounded-xl bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm khung giờ
+              </button>
+            </div>
+
+            <div class="grid grid-cols-4 sm:grid-cols-7 gap-2 mb-6">
+              ${days.map(d => {
+                const count = (state.timetable[d.num] || []).length;
+                const active = d.num === state.selectedDay;
+                return `
+                  <button type="button" data-select-day="${d.num}" class="py-2.5 px-2 rounded-2xl text-center transition border ${active ? 'bg-slate-900 text-white border-slate-900 shadow-md scale-[1.02]' : 'bg-white/75 text-slate-700 border-slate-200/80 hover:bg-white'}">
+                    <div class="text-xs font-bold">${d.short}</div>
+                    <div class="text-[10px] mt-0.5 ${active ? 'text-emerald-300' : 'text-slate-400'}">${count} buổi</div>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- Selected Day Header + Progress -->
+            <div class="flex items-center justify-between bg-emerald-50/70 border border-emerald-200/70 rounded-2xl px-4 py-3 mb-4">
+              <div class="flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                <span class="font-bold text-sm text-emerald-950">${currentDayObj.full}</span>
+                <span class="text-xs text-emerald-700">• ${doneCount}/${slots.length} khung giờ hoàn thành</span>
+              </div>
+              <div class="flex items-center gap-2.5">
+                <div class="progress-track !w-24"><div class="progress-fill !bg-emerald-600" style="width:${pct}%"></div></div>
+                <span class="text-xs font-bold text-emerald-900">${pct}%</span>
+              </div>
+            </div>
+
+            <!-- Single-Day Schedule Cards -->
+            <div class="space-y-3">
+              ${slots.length === 0 ? `
+                <div class="text-center py-12 rounded-2xl border border-dashed border-slate-300 bg-white/50">
+                  <i data-lucide="coffee" class="w-8 h-8 mx-auto text-slate-400 mb-2"></i>
+                  <div class="text-sm font-semibold text-slate-600">Chưa có lịch cho ${currentDayObj.full}</div>
+                  <div class="text-xs text-slate-400 mt-1">Bấm "Thêm khung giờ" để thêm môn học hoặc công việc mới.</div>
+                </div>
+              ` : slots.map(slot => {
+                const st = colorMap[slot.color] || colorMap.blue;
+                return `
+                  <div class="bg-white/90 rounded-2xl p-4 border border-slate-200/75 shadow-sm hover:shadow-md transition ${st.border}">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div class="flex items-start gap-3 min-w-0">
+                        <button type="button" data-toggle-tkb="${slot.id}" class="mt-0.5 w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition ${slot.done ? 'bg-emerald-600 border-emerald-600 text-white' : 'border-slate-300 bg-white hover:border-slate-500'}" aria-label="Đánh dấu hoàn thành">
+                          ${slot.done ? '<i data-lucide="check" class="w-3.5 h-3.5"></i>' : ''}
+                        </button>
+                        <div class="min-w-0">
+                          <div class="flex flex-wrap items-center gap-2 mb-1">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${st.badge}">
+                              <i data-lucide="clock" class="w-3 h-3"></i> ${slot.time}
+                            </span>
+                            <span class="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-600">${slot.tag || 'Học tập'}</span>
+                          </div>
+                          <div class="font-bold text-sm text-slate-900 ${slot.done ? 'line-through text-slate-400' : ''}">${slot.title}</div>
+                          <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1.5 text-xs text-slate-500">
+                            <span class="inline-flex items-center gap-1"><i data-lucide="user-check" class="w-3.5 h-3.5 text-emerald-700"></i> <strong>Giáo viên:</strong> ${slot.teacher}</span>
+                            ${slot.note ? `<span class="inline-flex items-center gap-1"><i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-400"></i> ${slot.note}</span>` : ''}
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-1 shrink-0 self-end sm:self-center">
+                        <button type="button" data-edit-tkb="${slot.id}" class="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition" title="Sửa">
+                          <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button type="button" data-del-tkb="${slot.id}" class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition" title="Xóa">
+                          <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+
+          <!-- Right Decorative Study Widget Card (Forest Art + Exam Countdowns) -->
+          <div class="xl:col-span-4 space-y-4">
+            <div class="glass-strong rounded-3xl p-5 relative overflow-hidden">
+              <div class="flex items-center justify-between mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Đếm ngược kỳ thi 2027</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">12A3</span>
+              </div>
+              <div class="space-y-2.5 relative z-10">
+                ${renderExamCountdownCard('HSG Hóa 12', '2027-01-26', 'Mục tiêu trọng tâm')}
+                ${renderExamCountdownCard('ĐGNL V-ACT Đợt 1', '2027-03-28', 'Luyện đề 04:30 & 21:30')}
+                ${renderExamCountdownCard('THPT Quốc Gia 2027', '2027-06-26', 'Toán • Lý • Hóa')}
+              </div>
+              <!-- Decorative Pine Trees at bottom -->
+              <svg class="w-full h-16 mt-4 opacity-55" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true">
+                <polygon points="15,70 42,15 70,70" fill="#5e8270"/>
+                <polygon points="55,70 90,6 125,70" fill="#466958"/>
+                <polygon points="110,70 140,25 170,70" fill="#779b89"/>
+                <polygon points="165,70 205,10 245,70" fill="#4e7361"/>
+                <polygon points="235,70 270,22 305,70" fill="#6d917f"/>
+              </svg>
+            </div>
+
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                <span class="text-xs font-bold text-slate-800">Mẹo học hiệu quả</span>
+              </div>
+              <p class="text-xs text-slate-600 leading-relaxed">
+                Chuyển sang tab <strong>Khóa học (Sheets)</strong> ngay phía trên để mở trực tiếp video YouTube, tài liệu Drive và theo dõi thanh tiến độ <strong>%</strong> tự động đồng bộ từ Google Sheet của thầy cô.
+              </p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderExamCountdownCard(title, isoDate, sub) {
+      const target = new Date(isoDate + 'T00:00:00');
+      const now = new Date();
+      const diff = Math.max(0, Math.ceil((target - now) / (1000 * 60 * 60 * 24)));
+      return `
+        <div class="bg-white/85 rounded-2xl p-3 border border-slate-200/70 flex items-center justify-between">
+          <div>
+            <div class="text-xs font-bold text-slate-900">${title}</div>
+            <div class="text-[11px] text-slate-500">${sub}</div>
+          </div>
+          <div class="text-right">
+            <span class="text-lg font-extrabold text-rose-800">${diff}</span>
+            <span class="text-[10px] font-semibold text-slate-500 block -mt-1">ngày nữa</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Khóa học Google Sheets Panel (Matching Image 2 data + Image 3 Accordion & Progress Bars!)
+    function renderGoogleSheetsCoursesPanel() {
+      const course = state.courses.find(c => c.id === state.selectedCourseId) || state.courses[0];
+      const stats = course ? getCourseStats(course) : { pct: 0, totalLessons: 0, completedLessons: 0, doneItems: 0, totalItems: 0 };
+
+      return `
+        <div class="space-y-4">
+          <!-- Course Switcher + Add Sheet + Sync Controls -->
+          <div class="glass-strong rounded-3xl p-4 sm:p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+              <div class="flex flex-wrap items-center gap-2">
+                ${state.courses.map(c => {
+                  const active = course && c.id === course.id;
+                  const cStats = getCourseStats(c);
+                  return `
+                    <button type="button" data-select-course="${c.id}" class="px-3.5 py-2 rounded-2xl text-xs font-bold transition border flex items-center gap-2 ${active ? 'bg-slate-900 text-white border-slate-900 shadow-sm' : 'bg-white/80 text-slate-700 border-slate-200 hover:bg-white'}">
+                      <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 ${active ? 'text-emerald-400' : 'text-emerald-600'}"></i>
+                      <span>${c.title}</span>
+                      <span class="px-1.5 py-0.5 rounded-md text-[10px] ${active ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}">${cStats.pct}%</span>
+                    </button>
+                  `;
+                }).join('')}
+                <button type="button" id="addSheetCourseBtn" class="px-3.5 py-2 rounded-2xl text-xs font-bold bg-emerald-700 text-white hover:bg-emerald-800 transition flex items-center gap-1.5 shadow-sm">
+                  <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> Thêm link Google Sheet
+                </button>
+              </div>
+
+              ${course ? `
+                <div class="flex items-center gap-2">
+                  <button type="button" id="syncCurrentCourseBtn" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-800 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                    <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-emerald-700"></i> Đồng bộ từ bản gốc
+                  </button>
+                  ${course.sheetUrl ? `
+                    <a href="${course.sheetUrl}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 text-xs font-semibold flex items-center gap-1">
+                      <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Sheet gốc
+                    </a>
+                  ` : ''}
+                </div>
+              ` : ''}
+            </div>
+
+            ${course ? `
+              <!-- Overall Course Progress Banner -->
+              <div class="rounded-2xl bg-white/85 border border-slate-200/80 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 class="text-base sm:text-lg font-extrabold text-slate-900">${course.title}</h2>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200/70 inline-flex items-center gap-1">
+                      <i data-lucide="eye" class="w-3 h-3"></i> ${course.accessMode || 'Chỉ xem'}
+                    </span>
+                  </div>
+                  <div class="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span>Tab: <strong>${course.sheetTab || 'TỔNG HỢP'}</strong></span>
+                    <span>• Đồng bộ lần cuối: <strong>${course.lastSynced}</strong></span>
+                    <span>• Đã học: <strong>${stats.doneItems}/${stats.totalItems} mục</strong> (${stats.completedLessons}/${stats.totalLessons} bài hoàn thành)</span>
+                  </div>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                  <div class="w-36 sm:w-44 h-2.5 rounded-full bg-slate-200 overflow-hidden">
+                    <div class="h-full rounded-full bg-[#c0262d] transition-all duration-300" style="width:${stats.pct}%"></div>
+                  </div>
+                  <span class="text-sm font-extrabold text-[#c0262d] w-10 text-right">${stats.pct}%</span>
+                  ${state.courses.length > 1 ? `
+                    <button type="button" id="deleteCourseBtn" class="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50" title="Xóa khóa học này">
+                      <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                  ` : ''}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Chapter Accordions (Exact Image 3 Aesthetic!) -->
+          ${course ? `
+            <div class="space-y-4">
+              ${course.chapters.map(ch => {
+                const lessonCount = ch.lessons.length;
+                return `
+                  <div class="rounded-2xl overflow-hidden shadow-sm border border-rose-200/60 bg-white/95">
+                    <!-- Soft Rose Chapter Header Bar (matching Image 3) -->
+                    <button type="button" data-toggle-chapter="${ch.id}" class="chapter-header w-full px-5 py-4 flex items-center justify-between gap-3 text-left">
+                      <span class="font-extrabold text-sm sm:text-base tracking-tight text-slate-900 uppercase">${ch.title}</span>
+                      <div class="flex items-center gap-3 shrink-0">
+                        <span class="text-xs sm:text-sm font-medium text-slate-600">(${lessonCount} bài học)</span>
+                        <i data-lucide="${ch.expanded ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4 text-amber-600"></i>
+                      </div>
+                    </button>
+
+                    <!-- Lessons List inside Chapter -->
+                    ${ch.expanded ? `
+                      <div class="divide-y divide-slate-100 px-3 sm:px-5 py-2">
+                        ${ch.lessons.map(ls => {
+                          const st = getLessonStats(ls);
+                          return `
+                            <div class="py-3">
+                              <!-- Lesson Summary Row (matching Image 3) -->
+                              <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer group" data-toggle-lesson="${ch.id}|${ls.id}">
+                                <div class="flex items-center gap-3 min-w-0">
+                                  <span class="text-amber-500 shrink-0">
+                                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                                  </span>
+                                  <span class="font-bold text-sm text-[#0f2942] group-hover:text-[#c0262d] transition leading-snug">
+                                    ${ls.title}
+                                  </span>
+                                </div>
+
+                                <!-- Right Metrics + Progress Bar (exact Image 3 layout) -->
+                                <div class="flex items-center justify-end gap-4 shrink-0 pl-8 md:pl-0">
+                                  <div class="flex items-center gap-3 text-xs font-bold text-[#c0262d]">
+                                    <span class="inline-flex items-center gap-1" title="Số video bài giảng">
+                                      ${st.videos} <i data-lucide="video" class="w-3.5 h-3.5 text-amber-500 fill-amber-500"></i>
+                                    </span>
+                                    <span class="inline-flex items-center gap-1" title="Số tài liệu & đáp án">
+                                      ${st.docs} <i data-lucide="file-text" class="w-3.5 h-3.5 text-amber-500"></i>
+                                    </span>
+                                  </div>
+                                  <div class="flex items-center gap-2.5">
+                                    <div class="progress-track">
+                                      <div class="progress-fill" style="width:${st.pct}%"></div>
+                                    </div>
+                                    <span class="text-xs font-bold text-[#0f2942] w-9 text-right">${st.pct}%</span>
+                                    <i data-lucide="${ls.expanded ? 'chevron-up' : 'chevron-down'}" class="w-4 h-4 text-slate-400"></i>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <!-- Expanded Lesson Resources (YouTube, Drive, Tài liệu, Đáp án) -->
+                              ${ls.expanded ? `
+                                <div class="mt-3 ml-0 sm:ml-8 p-3.5 rounded-2xl bg-slate-50/90 border border-slate-200/70 space-y-2">
+                                  ${ls.items.map(it => {
+                                    const badgeIcon = it.type === 'video' ? 'play-circle' : it.type === 'answer' ? 'check-circle-2' : 'file-text';
+                                    const badgeColor = it.type === 'video' ? 'text-rose-600 bg-rose-50' : it.type === 'answer' ? 'text-emerald-700 bg-emerald-50' : 'text-sky-700 bg-sky-50';
+                                    const ytId = extractYouTubeId(it.url);
+                                    return `
+                                      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white rounded-xl px-3.5 py-2.5 border border-slate-200/70">
+                                        <label class="flex items-center gap-3 cursor-pointer min-w-0 flex-1">
+                                          <input type="checkbox" data-check-item="${ch.id}|${ls.id}|${it.id}" ${it.done ? 'checked' : ''} class="w-4 h-4 rounded accent-[#c0262d] cursor-pointer shrink-0" />
+                                          <span class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${badgeColor}">
+                                            <i data-lucide="${badgeIcon}" class="w-4 h-4"></i>
+                                          </span>
+                                          <span class="text-xs sm:text-sm font-medium ${it.done ? 'line-through text-slate-400' : 'text-slate-800'} truncate">${it.label}</span>
+                                        </label>
+
+                                        <div class="flex items-center gap-2 pl-7 sm:pl-0 shrink-0">
+                                          ${ytId ? `
+                                            <button type="button" data-play-yt="${ytId}|${ch.id}|${ls.id}|${it.id}" class="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-[11px] font-bold hover:bg-rose-700 transition inline-flex items-center gap-1">
+                                              <i data-lucide="play" class="w-3 h-3"></i> Xem tại đây
+                                            </button>
+                                          ` : ''}
+                                          ${it.url ? `
+                                            <a href="${it.url}" target="_blank" rel="noopener noreferrer" data-auto-study="${ch.id}|${ls.id}|${it.id}" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-[11px] font-semibold hover:bg-slate-700 transition inline-flex items-center gap-1">
+                                              <i data-lucide="external-link" class="w-3 h-3"></i> ${it.type === 'video' ? 'Mở YouTube' : 'Mở tài liệu'}
+                                            </a>
+                                          ` : ''}
+                                        </div>
+                                      </div>
+                                    `;
+                                  }).join('')}
+                                </div>
+                              ` : ''}
+                            </div>
+                          `;
+                        }).join('')}
+                      </div>
+                    ` : ''}
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. CÔNG VIỆC VIEW (EXACT IMAGE 1 LAYOUT: PINE CARD + MONTHLY CALENDAR)
+    // -------------------------------------------------------------------------
+    function renderWorkView() {
+      const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+      const filteredLeft = state.workItems.filter(w => state.workLeftTab === 'kho' ? w.category === 'kho' : w.category === 'booking');
+      const groups = [
+        { key: 'pending', label: 'Chờ làm', dot: 'bg-slate-900' },
+        { key: 'doing', label: 'Đang thực hiện', dot: 'bg-[#881337]' },
+        { key: 'done', label: 'Đã xong', dot: 'bg-[#4f86a8]' }
+      ];
+
+      // Build 35/42 calendar days (Mon -> Sun)
+      const firstDay = new Date(state.calYear, state.calMonth, 1);
+      const startOffset = (firstDay.getDay() + 6) % 7; // Mon=0 ... Sun=6
+      const daysInMonth = new Date(state.calYear, state.calMonth + 1, 0).getDate();
+      const prevMonthDays = new Date(state.calYear, state.calMonth, 0).getDate();
+      const totalCells = startOffset + daysInMonth > 35 ? 42 : 35;
+
+      const cells = [];
+      for (let i = 0; i < totalCells; i++) {
+        let dayNum, m = state.calMonth, y = state.calYear, isCurrent = true;
+        if (i < startOffset) {
+          dayNum = prevMonthDays - startOffset + i + 1;
+          m = state.calMonth - 1;
+          if (m < 0) { m = 11; y--; }
+          isCurrent = false;
+        } else if (i >= startOffset + daysInMonth) {
+          dayNum = i - (startOffset + daysInMonth) + 1;
+          m = state.calMonth + 1;
+          if (m > 11) { m = 0; y++; }
+          isCurrent = false;
+        } else {
+          dayNum = i - startOffset + 1;
+        }
+        const iso = `${y}-${String(m + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+        const dayEvents = state.calendarEvents.filter(ev => {
+          if (ev.date !== iso) return false;
+          if (state.calFilter === 'all') return true;
+          return ev.type === state.calFilter;
+        });
+        cells.push({ dayNum, iso, isCurrent, dayEvents });
+      }
+
+      const todayIso = '2026-11-21';
+
+      return `
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Công việc</h1>
+            <button type="button" id="addWorkTaskBtn" class="px-3.5 py-2 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition flex items-center gap-1.5 shadow-sm">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm công việc
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
+            <!-- Center-Left Glass Card with Pine Illustration (Image 1) -->
+            <div class="xl:col-span-3 glass-strong rounded-3xl p-4 relative overflow-hidden min-h-[600px] flex flex-col justify-between">
+              <div class="relative z-10">
+                <!-- Toggle Pill Tabs -->
+                <div class="bg-slate-100/90 p-1 rounded-full grid grid-cols-2 gap-1 mb-4">
+                  <button type="button" data-work-tab="kho" class="py-1.5 rounded-full text-xs font-bold transition ${state.workLeftTab === 'kho' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600'}">Kho bài tập</button>
+                  <button type="button" data-work-tab="booking" class="py-1.5 rounded-full text-xs font-bold transition ${state.workLeftTab === 'booking' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-600'}">Lịch & Nhóm</button>
+                </div>
+
+                <div class="space-y-4">
+                  ${groups.map(g => {
+                    const list = filteredLeft.filter(it => it.status === g.key);
+                    return `
+                      <div>
+                        <div class="flex items-center gap-2 mb-2 px-1">
+                          <span class="w-2.5 h-2.5 rounded-full ${g.dot}"></span>
+                          <span class="text-xs font-bold text-slate-800">${g.label}</span>
+                          <span class="text-[11px] text-slate-400">· ${list.length}</span>
+                        </div>
+                        <div class="space-y-2">
+                          ${list.map(item => `
+                            <div class="bg-white/90 rounded-2xl px-3.5 py-2.5 border border-slate-200/70 shadow-sm hover:shadow transition flex items-start justify-between gap-2">
+                              <button type="button" data-cycle-work="${item.id}" class="text-left min-w-0 flex-1" title="Bấm để chuyển trạng thái">
+                                <div class="text-xs font-bold text-slate-800 leading-snug">${item.title}</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5">${item.subtitle}</div>
+                              </button>
+                              <button type="button" data-del-work="${item.id}" class="text-slate-300 hover:text-rose-600 p-0.5" title="Xóa">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                              </button>
+                            </div>
+                          `).join('')}
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Misty Pine Forest Illustration at bottom of card (matching Image 1) -->
+              <svg class="w-[calc(100%+2rem)] -mx-4 -mb-4 mt-6 h-32 opacity-75 pointer-events-none" viewBox="0 0 320 130" preserveAspectRatio="none" aria-hidden="true">
+                <defs>
+                  <linearGradient id="pineFade" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#ffffff" stop-opacity="0"/>
+                    <stop offset="100%" stop-color="#60846f" stop-opacity="0.35"/>
+                  </linearGradient>
+                </defs>
+                <rect width="320" height="130" fill="url(#pineFade)"/>
+                <polygon points="-10,130 35,38 80,130" fill="#5e7f6d" fill-opacity="0.72"/>
+                <polygon points="45,130 95,55 145,130" fill="#466857" fill-opacity="0.82"/>
+                <polygon points="115,130 165,42 215,130" fill="#6f9480" fill-opacity="0.65"/>
+                <polygon points="180,130 235,25 290,130" fill="#4f7260" fill-opacity="0.85"/>
+                <polygon points="245,130 290,52 335,130" fill="#3c5c4c" fill-opacity="0.8"/>
+              </svg>
+            </div>
+
+            <!-- Right Monthly Calendar (Image 1) -->
+            <div class="xl:col-span-9 glass-strong rounded-3xl p-4 sm:p-5">
+              <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 class="text-lg sm:text-xl font-extrabold">${monthNames[state.calMonth]}, ${state.calYear}</h2>
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Filter Pills -->
+                  <div class="bg-white/90 border border-slate-200/80 p-0.5 rounded-full inline-flex items-center">
+                    <button type="button" data-cal-filter="study" class="px-3 py-1 rounded-full text-xs font-semibold ${state.calFilter === 'study' ? 'bg-slate-900 text-white' : 'text-slate-600'}">Học tập</button>
+                    <button type="button" data-cal-filter="deadline" class="px-3 py-1 rounded-full text-xs font-semibold ${state.calFilter === 'deadline' ? 'bg-slate-900 text-white' : 'text-slate-600'}">Hạn nộp</button>
+                    <button type="button" data-cal-filter="all" class="px-3 py-1 rounded-full text-xs font-semibold ${state.calFilter === 'all' ? 'bg-slate-900 text-white' : 'text-slate-600'}">Tất cả</button>
+                  </div>
+                  <!-- Month Navigation -->
+                  <div class="flex items-center gap-1">
+                    <button type="button" id="calPrevBtn" class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <span class="px-3 py-1 rounded-full bg-white border border-slate-200 text-xs font-bold">${monthNames[state.calMonth]}</span>
+                    <button type="button" id="calNextBtn" class="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    <button type="button" id="calTodayBtn" class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-xs font-semibold hover:bg-slate-50">Hôm nay</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Day of Week Headers -->
+              <div class="grid grid-cols-7 text-center text-[11px] font-bold text-slate-500 pb-2">
+                <span>Thứ Hai</span><span>Thứ Ba</span><span>Thứ Tư</span><span>Thứ Năm</span><span>Thứ Sáu</span><span>Thứ Bảy</span><span>Chủ Nhật</span>
+              </div>
+
+              <!-- Calendar Cells -->
+              <div class="cal-grid">
+                ${cells.map(c => `
+                  <div class="cal-cell ${!c.isCurrent ? 'opacity-45' : ''}" data-open-cal-day="${c.iso}">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs font-bold ${c.iso === todayIso ? 'w-6 h-6 rounded-full bg-slate-900 text-white inline-flex items-center justify-center' : 'text-slate-700'}">${c.dayNum}</span>
+                    </div>
+                    ${c.dayEvents.slice(0, 3).map(ev => {
+                      const cls = ev.style === 'maroon' ? 'cal-pill-maroon' : ev.style === 'blue' ? 'cal-pill-blue' : ev.style === 'alert' ? 'cal-pill-alert' : 'cal-pill-black';
+                      const prefix = ev.style === 'alert' ? '! ' : '';
+                      return `<span class="cal-pill ${cls}" title="${ev.title}">${prefix}${ev.title}</span>`;
+                    }).join('')}
+                    ${c.dayEvents.length > 3 ? `<div class="text-[10px] font-semibold text-slate-400 mt-1">+${c.dayEvents.length - 3} mục khác</div>` : ''}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. DASHBOARD VIEW
+    // -------------------------------------------------------------------------
+    function renderDashboardView() {
+      const todaySlots = state.timetable[state.selectedDay] || [];
+      const totalCoursesPct = state.courses.length
+        ? Math.round(state.courses.reduce((s, c) => s + getCourseStats(c).pct, 0) / state.courses.length)
+        : 0;
+      const pendingWork = state.workItems.filter(w => w.status !== 'done').length;
+
+      return `
+        <div class="space-y-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Xin chào, Lê Hữu Nam</h1>
+              <p class="text-xs sm:text-sm text-slate-500 mt-0.5">Không gian quản lý công việc & học tập Forest OS — Lớp 12A3</p>
+            </div>
+            <button type="button" data-jump-view="study" class="px-4 py-2 rounded-full bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition inline-flex items-center gap-1.5 self-start">
+              <i data-lucide="play" class="w-3.5 h-3.5"></i> Tiếp tục học khóa Sheets
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="text-xs font-semibold text-slate-500">Tiến độ khóa học trung bình</div>
+              <div class="text-3xl font-extrabold text-[#c0262d] mt-1">${totalCoursesPct}%</div>
+              <div class="progress-track !w-full mt-3"><div class="progress-fill" style="width:${totalCoursesPct}%"></div></div>
+            </div>
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="text-xs font-semibold text-slate-500">Công việc chưa hoàn thành</div>
+              <div class="text-3xl font-extrabold text-slate-900 mt-1">${pendingWork}</div>
+              <div class="text-[11px] text-slate-400 mt-2">Bấm vào Công việc để cập nhật</div>
+            </div>
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="text-xs font-semibold text-slate-500">Số buổi học trong ngày</div>
+              <div class="text-3xl font-extrabold text-emerald-800 mt-1">${todaySlots.length}</div>
+              <div class="text-[11px] text-slate-400 mt-2">${todaySlots.filter(s => s.done).length} buổi đã hoàn thành</div>
+            </div>
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="text-xs font-semibold text-slate-500">Khóa học Google Sheets</div>
+              <div class="text-3xl font-extrabold text-sky-700 mt-1">${state.courses.length}</div>
+              <div class="text-[11px] text-slate-400 mt-2">${state.googleAuth.signedIn ? 'Đã kết nối Google' : 'Chưa đăng nhập Google'}</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-sm">Tiến độ từng khóa học</h2>
+                <button type="button" data-jump-view="study" class="text-xs font-semibold text-emerald-700 hover:underline">Mở tất cả</button>
+              </div>
+              <div class="space-y-3">
+                ${state.courses.map(c => {
+                  const st = getCourseStats(c);
+                  return `
+                    <div class="bg-white/85 rounded-2xl p-3.5 border border-slate-200/70 flex items-center justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-xs font-bold text-slate-900 truncate">${c.title}</div>
+                        <div class="text-[11px] text-slate-500">${st.doneItems}/${st.totalItems} mục đã học</div>
+                      </div>
+                      <div class="flex items-center gap-2 shrink-0">
+                        <div class="progress-track !w-24"><div class="progress-fill" style="width:${st.pct}%"></div></div>
+                        <span class="text-xs font-bold text-[#c0262d] w-8 text-right">${st.pct}%</span>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+
+            <div class="glass-strong rounded-3xl p-5">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="font-bold text-sm">Nhắc nhở sắp tới</h2>
+                <button type="button" data-jump-view="reminder" class="text-xs font-semibold text-emerald-700 hover:underline">Quản lý</button>
+              </div>
+              <div class="space-y-2.5">
+                ${state.reminders.map(r => `
+                  <div class="bg-white/85 rounded-2xl p-3 border border-slate-200/70 flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium ${r.done ? 'line-through text-slate-400' : 'text-slate-800'}">${r.title}</span>
+                    <span class="text-[11px] font-semibold text-slate-400 shrink-0">${r.time}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. REMINDER, FINANCE, QUICK NOTE, PROJECT, RELAX, MÀU & KÍNH, ARCHIVE, SETTINGS
+    // -------------------------------------------------------------------------
+    function renderReminderView() {
+      return `
+        <div class="max-w-3xl space-y-5">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-extrabold">Reminder</h1>
+          </div>
+          <div class="glass-strong rounded-3xl p-5 space-y-4">
+            <form id="addReminderForm" class="flex flex-col sm:flex-row gap-2">
+              <input id="remTitleInput" type="text" required placeholder="Nhập lời nhắc (vd: Làm đề V-ACT, Nộp bài Hóa...)" class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs focus:outline-none focus:border-slate-900" />
+              <input id="remTimeInput" type="text" placeholder="Thời gian (vd: Tối nay 21:00)" class="sm:w-44 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs focus:outline-none focus:border-slate-900" />
+              <button type="submit" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">Thêm</button>
+            </form>
+            <div class="space-y-2">
+              ${state.reminders.map(r => `
+                <div class="bg-white/90 rounded-2xl px-4 py-3 border border-slate-200/70 flex items-center justify-between gap-3">
+                  <label class="flex items-center gap-3 cursor-pointer flex-1">
+                    <input type="checkbox" data-toggle-rem="${r.id}" ${r.done ? 'checked' : ''} class="w-4 h-4 accent-slate-900" />
+                    <div>
+                      <div class="text-xs font-bold ${r.done ? 'line-through text-slate-400' : 'text-slate-900'}">${r.title}</div>
+                      <div class="text-[11px] text-slate-400">${r.time}</div>
+                    </div>
+                  </label>
+                  <button type="button" data-del-rem="${r.id}" class="text-slate-400 hover:text-rose-600 p-1"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFinanceView() {
+      const income = state.finance.filter(f => f.type === 'income').reduce((s, f) => s + f.amount, 0);
+      const expense = state.finance.filter(f => f.type === 'expense').reduce((s, f) => s + f.amount, 0);
+      const balance = income - expense;
+      const fmt = n => n.toLocaleString('vi-VN') + 'đ';
+
+      return `
+        <div class="max-w-4xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Finance</h1>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="glass-strong rounded-3xl p-4"><div class="text-xs text-slate-500">Số dư hiện tại</div><div class="text-xl font-extrabold text-slate-900 mt-1">${fmt(balance)}</div></div>
+            <div class="glass-strong rounded-3xl p-4"><div class="text-xs text-slate-500">Tổng thu</div><div class="text-xl font-extrabold text-emerald-700 mt-1">+${fmt(income)}</div></div>
+            <div class="glass-strong rounded-3xl p-4"><div class="text-xs text-slate-500">Tổng chi</div><div class="text-xl font-extrabold text-rose-700 mt-1">-${fmt(expense)}</div></div>
+          </div>
+          <div class="glass-strong rounded-3xl p-5 space-y-4">
+            <form id="addFinanceForm" class="grid grid-cols-1 sm:grid-cols-4 gap-2">
+              <input id="finTitle" required placeholder="Nội dung thu/chi..." class="sm:col-span-2 px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs" />
+              <input id="finAmount" type="number" min="1000" required placeholder="Số tiền (VNĐ)" class="px-3.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs" />
+              <div class="flex gap-2">
+                <select id="finType" class="flex-1 px-2.5 py-2.5 rounded-xl bg-white border border-slate-200 text-xs">
+                  <option value="expense">Chi tiêu</option>
+                  <option value="income">Thu nhập</option>
+                </select>
+                <button type="submit" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Lưu</button>
+              </div>
+            </form>
+            <div class="space-y-2">
+              ${state.finance.map(f => `
+                <div class="bg-white/90 rounded-2xl px-4 py-3 border border-slate-200/70 flex items-center justify-between">
+                  <div>
+                    <div class="text-xs font-bold text-slate-900">${f.title}</div>
+                    <div class="text-[11px] text-slate-400">${f.date}</div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <span class="text-xs font-extrabold ${f.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}">${f.type === 'income' ? '+' : '-'}${fmt(f.amount)}</span>
+                    <button type="button" data-del-fin="${f.id}" class="text-slate-400 hover:text-rose-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderQuickNoteView() {
+      return `
+        <div class="max-w-4xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Quick Note</h1>
+          <div class="glass-strong rounded-3xl p-5 space-y-4">
+            <form id="addNoteForm" class="flex gap-2">
+              <input id="quickNoteMainInput" required placeholder="Viết ghi chú nhanh..." class="flex-1 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs" />
+              <button type="submit" class="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Thêm ghi chú</button>
+            </form>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              ${state.notes.map(n => `
+                <div class="bg-amber-50/90 border border-amber-200/70 rounded-2xl p-4 flex flex-col justify-between gap-3">
+                  <p class="text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">${n.text}</p>
+                  <div class="flex items-center justify-between text-[11px] text-slate-400">
+                    <span>${n.createdAt}</span>
+                    <button type="button" data-del-note="${n.id}" class="text-slate-400 hover:text-rose-600">Xóa</button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProjectView() {
+      return `
+        <div class="max-w-5xl space-y-5">
+          <div class="flex items-center justify-between">
+            <h1 class="text-2xl font-extrabold">Project Hub</h1>
+            <button type="button" id="addProjectBtn" class="px-3.5 py-2 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center gap-1.5">
+              <i data-lucide="plus" class="w-3.5 h-3.5"></i> Thêm liên kết
+            </button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            ${state.projects.map(p => `
+              <div class="glass-strong rounded-3xl p-5 flex flex-col justify-between gap-4 hover:shadow-md transition">
+                <div class="flex items-start justify-between">
+                  <div class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center">
+                    <i data-lucide="${p.icon || 'link'}" class="w-5 h-5"></i>
+                  </div>
+                  <button type="button" data-del-proj="${p.id}" class="text-slate-400 hover:text-rose-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                </div>
+                <div>
+                  <h3 class="font-bold text-sm text-slate-900">${p.name}</h3>
+                  <p class="text-xs text-slate-500 mt-1">${p.desc}</p>
+                </div>
+                <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:underline">
+                  Mở ứng dụng <i data-lucide="arrow-up-right" class="w-3.5 h-3.5"></i>
+                </a>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Relax: Pomodoro + Synthesized Forest Rain Audio
+    let pomoSeconds = 25 * 60;
+    let pomoRunning = false;
+    let pomoTimer = null;
+    let rainAudioCtx = null;
+    let rainNode = null;
+    let rainPlaying = false;
+
+    function formatPomo(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+    }
+
+    function renderRelaxView() {
+      return `
+        <div class="max-w-2xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Relax & Tập trung</h1>
+          <div class="glass-strong rounded-3xl p-8 text-center space-y-6">
+            <div class="inline-flex gap-2 bg-slate-100 p-1 rounded-full">
+              <button type="button" data-pomo-preset="25" class="px-3.5 py-1.5 rounded-full text-xs font-bold bg-white shadow-sm">25 phút</button>
+              <button type="button" data-pomo-preset="50" class="px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-600">50 phút</button>
+              <button type="button" data-pomo-preset="5" class="px-3.5 py-1.5 rounded-full text-xs font-bold text-slate-600">Nghỉ 5 phút</button>
+            </div>
+            <div id="pomoDisplay" class="text-6xl font-extrabold tracking-tight font-mono">${formatPomo(pomoSeconds)}</div>
+            <div class="flex items-center justify-center gap-3">
+              <button type="button" id="pomoToggleBtn" class="px-6 py-2.5 rounded-full bg-slate-900 text-white text-xs font-bold hover:bg-slate-800">${pomoRunning ? 'Tạm dừng' : 'Bắt đầu tập trung'}</button>
+              <button type="button" id="pomoResetBtn" class="px-4 py-2.5 rounded-full bg-white border border-slate-200 text-xs font-bold">Đặt lại</button>
+              <button type="button" id="rainToggleBtn" class="px-4 py-2.5 rounded-full border text-xs font-bold flex items-center gap-1.5 ${rainPlaying ? 'bg-emerald-700 text-white border-emerald-700' : 'bg-white border-slate-200 text-slate-700'}">
+                <i data-lucide="cloud-rain" class="w-4 h-4"></i> ${rainPlaying ? 'Tắt tiếng mưa rừng' : 'Bật tiếng mưa rừng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderThemeView() {
+      const themes = [
+        { id: 'forest', name: 'Forest Sương Mù (Mặc định)', preview: 'linear-gradient(135deg,#f3f6f4,#d7e4dc)' },
+        { id: 'sunset', name: 'Rừng Hoàng Hôn Ấm', preview: 'linear-gradient(135deg,#fdf6f3,#ebd7ce)' },
+        { id: 'pastel', name: 'Hồng Pastel Khóa học', preview: 'linear-gradient(135deg,#fdf2f4,#f6d5d8)' },
+        { id: 'aurora', name: 'Đêm Cực Quang (Dark)', preview: 'linear-gradient(135deg,#0f172a,#132a2e)' }
+      ];
+      return `
+        <div class="max-w-3xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Màu & kính</h1>
+          <div class="glass-strong rounded-3xl p-6 space-y-6">
+            <div>
+              <div class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Chọn bảng màu nền</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${themes.map(t => `
+                  <button type="button" data-pick-theme="${t.id}" class="p-3 rounded-2xl border text-left flex items-center gap-3 transition ${state.theme === t.id ? 'border-slate-900 ring-2 ring-slate-900/15 bg-white' : 'border-slate-200 bg-white/70 hover:bg-white'}">
+                    <span class="w-10 h-10 rounded-xl shrink-0 border border-black/10" style="background:${t.preview}"></span>
+                    <span class="text-xs font-bold text-slate-800">${t.name}</span>
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+            <div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Độ mờ kính (Glassmorphism Blur)</span>
+                <span class="text-xs font-bold" id="blurValLabel">${state.glassBlur}px</span>
+              </div>
+              <input id="blurSlider" type="range" min="0" max="24" value="${state.glassBlur}" class="w-full accent-slate-900" />
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderArchiveView() {
+      return `
+        <div class="max-w-3xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Lưu trữ</h1>
+          <div class="glass-strong rounded-3xl p-5 space-y-2.5">
+            ${state.archived.length === 0 ? `<div class="text-xs text-slate-400 text-center py-8">Chưa có mục lưu trữ.</div>` : state.archived.map(a => `
+              <div class="bg-white/85 rounded-2xl px-4 py-3 border border-slate-200/70 flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700">${a.title}</span>
+                <span class="text-[11px] text-slate-400">${a.archivedAt}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderSettingsView() {
+      const signed = state.googleAuth.signedIn && state.googleAuth.user;
+      return `
+        <div class="max-w-3xl space-y-5">
+          <h1 class="text-2xl font-extrabold">Cài đặt & Đồng bộ Google</h1>
+          <div class="glass-strong rounded-3xl p-6 space-y-5">
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-slate-200/70">
+              <div>
+                <div class="text-sm font-bold">Tài khoản Google (Quyền đọc Google Sheets)</div>
+                <div class="text-xs text-slate-500 mt-0.5">${signed ? `Đang đăng nhập: ${state.googleAuth.user.name} (${state.googleAuth.user.email})` : 'Chưa kết nối tài khoản Google'}</div>
+              </div>
+              <button type="button" id="settingsGoogleBtn" class="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">${signed ? 'Quản lý / Đăng xuất' : 'Đăng nhập Google'}</button>
+            </div>
+            <div class="flex items-center justify-between gap-4 pb-4 border-b border-slate-200/70">
+              <div>
+                <div class="text-sm font-bold">Tự động đồng bộ khi mở trang</div>
+                <div class="text-xs text-slate-500 mt-0.5">Cập nhật bài giảng mới nhất từ Sheet gốc của thầy cô</div>
+              </div>
+              <input type="checkbox" id="autoSyncToggle" ${state.autoSyncOnLoad ? 'checked' : ''} class="w-5 h-5 accent-slate-900 cursor-pointer" />
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" id="exportBackupBtn" class="px-4 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold hover:bg-slate-50">Xuất sao lưu JSON</button>
+              <button type="button" id="resetDemoBtn" class="px-4 py-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100">Khôi phục dữ liệu mẫu</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // MODALS (Google Sign-In, Add Google Sheet Course, YouTube Player, Add TKB, Calendar Day)
+    // =========================================================================
+    function openGoogleAuthModal() {
+      const signed = state.googleAuth.signedIn && state.googleAuth.user;
+      openModal(`
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-extrabold flex items-center gap-2">
+            <i data-lucide="shield-check" class="w-5 h-5 text-emerald-700"></i> Đăng nhập tài khoản Google
+          </h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        ${signed ? `
+          <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3 mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-700 text-white font-bold flex items-center justify-center">${(state.googleAuth.user.name || 'G')[0]}</div>
+              <div>
+                <div class="text-sm font-bold text-emerald-950">${state.googleAuth.user.name}</div>
+                <div class="text-xs text-emerald-700">${state.googleAuth.user.email}</div>
+              </div>
+            </div>
+            <button type="button" id="modalSignOutBtn" class="px-3.5 py-2 rounded-xl bg-white border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-50">Đăng xuất</button>
+          </div>
+        ` : `
+          <p class="text-xs text-slate-600 leading-relaxed mb-4">
+            Đăng nhập bằng Google OAuth 2.0 cho phép ứng dụng đọc trực tiếp các bảng <strong>Google Sheets riêng tư ("Chỉ xem")</strong> đã được thầy cô chia sẻ với Gmail của bạn, lấy đầy đủ link <strong>YouTube, Drive, Tài liệu, Đáp án</strong> và tự động đồng bộ theo bản gốc.
+          </p>
+        `}
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Google OAuth Client ID (dùng cho Sheet riêng tư)</label>
+            <input id="googleClientIdInput" type="text" value="${state.googleAuth.clientId || ''}" placeholder="xxxxxxxxxx-xxxxxxxx.apps.googleusercontent.com" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs focus:outline-none focus:border-slate-900" />
+            <p class="text-[11px] text-slate-400 mt-1">Tạo miễn phí tại Google Cloud Console → Credentials → OAuth 2.0 Client ID (Web application) và bật Google Sheets API.</p>
+          </div>
+
+          <div class="flex flex-wrap gap-2 pt-2">
+            <button type="button" id="modalStartGoogleLoginBtn" class="flex-1 py-2.5 px-4 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2">
+              <i data-lucide="log-in" class="w-4 h-4"></i> Đăng nhập bằng Google
+            </button>
+            <button type="button" onclick="closeModal()" class="py-2.5 px-4 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold hover:bg-slate-200">Đóng</button>
+          </div>
+        </div>
+      `);
+
+      const loginBtn = document.getElementById('modalStartGoogleLoginBtn');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', () => {
+          const val = document.getElementById('googleClientIdInput').value;
+          triggerGoogleSignIn(val);
+        });
+      }
+      const outBtn = document.getElementById('modalSignOutBtn');
+      if (outBtn) {
+        outBtn.addEventListener('click', () => {
+          signOutGoogle();
+          closeModal();
+        });
+      }
+    }
+
+    function openAddSheetCourseModal() {
+      openModal(`
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-extrabold flex items-center gap-2">
+            <i data-lucide="file-spreadsheet" class="w-5 h-5 text-emerald-700"></i> Thêm khóa học từ Google Sheets
+          </h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+
+        <form id="addSheetCourseForm" class="space-y-3.5">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Tên khóa học</label>
+            <input id="newCourseTitle" type="text" required placeholder="Vd: Thầy Lương Văn Huy - XPS2009 / Hóa 12 Thầy..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div class="sm:col-span-2">
+              <label class="block text-xs font-bold text-slate-700 mb-1">Đường link Google Sheet (bản gốc)</label>
+              <input id="newCourseUrl" type="url" placeholder="https://docs.google.com/spreadsheets/d/..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1">Tên Tab (Sheet)</label>
+              <input id="newCourseTab" type="text" placeholder="TỔNG HỢP" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-slate-200">
+            <label class="block text-xs font-bold text-slate-700 mb-1">Hoặc dán nhanh nội dung copy từ Google Sheet (tùy chọn)</label>
+            <textarea id="newCoursePaste" rows="4" placeholder="Copy các dòng từ Google Sheet (gồm tên Chương, tên Buổi, link YouTube, link Tài liệu) rồi dán vào đây — hệ thống sẽ tự động chia chương và tạo thanh tiến độ %!" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-mono"></textarea>
+          </div>
+
+          <div class="flex items-center justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Hủy</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800">Lưu & Tự động đồng bộ</button>
+          </div>
+        </form>
+      `);
+
+      document.getElementById('addSheetCourseForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const title = nfc(document.getElementById('newCourseTitle').value.trim());
+        const url = document.getElementById('newCourseUrl').value.trim();
+        const tab = nfc(document.getElementById('newCourseTab').value.trim()) || 'TỔNG HỢP';
+        const pasted = document.getElementById('newCoursePaste').value.trim();
+
+        let chapters = [];
+        if (pasted) {
+          const rows = pasted.split(/\r?\n/).map(line =>
+            line.split('\t').map(cell => ({ text: nfc(cell.trim()), url: '' }))
+          );
+          chapters = parseRowsToChapters(rows, null);
+        }
+
+        const newCourse = {
+          id: uid('course'),
+          title,
+          teacher: title,
+          sheetUrl: url,
+          sheetId: extractSheetId(url),
+          sheetTab: tab,
+          accessMode: url ? 'Đang kết nối bản gốc' : 'Nhập trực tiếp',
+          lastSynced: new Date().toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
+          chapters: chapters.length ? chapters : [{
+            id: uid('ch'),
+            title: 'CHƯƠNG 1 - DANH SÁCH BÀI HỌC',
+            expanded: true,
+            lessons: [{
+              id: uid('ls'),
+              title: 'Bấm "Đồng bộ từ bản gốc" sau khi đăng nhập Google để tải bài giảng',
+              expanded: false,
+              items: [{ id: uid('it'), type: 'doc', label: 'Mở Google Sheet gốc', url: url || 'https://docs.google.com/spreadsheets', done: false }]
+            }]
+          }]
+        };
+
+        state.courses.push(newCourse);
+        state.selectedCourseId = newCourse.id;
+        saveState();
+        closeModal();
+        renderCurrentView();
+
+        if (url && !pasted) {
+          const ok = await syncCourseFromGoogleSheet(newCourse);
+          if (ok) renderCurrentView();
+        } else {
+          showToast(`Đã tạo khóa học "${title}" với thanh tiến độ tự động!`, 'success');
+        }
+      });
+    }
+
+    function openYouTubeModal(ytId, chId, lsId, itId) {
+      openModal(`
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-extrabold flex items-center gap-2"><i data-lucide="play-circle" class="w-4 h-4 text-rose-600"></i> Học trực tiếp trên Forest</h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="aspect-video w-full rounded-2xl overflow-hidden bg-black mb-4">
+          <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ytId}" title="Video bài giảng" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <a href="https://youtu.be/${ytId}" target="_blank" rel="noopener noreferrer" class="text-xs font-semibold text-slate-600 hover:underline">Mở trên YouTube</a>
+          <button type="button" id="markVideoDoneBtn" class="px-4 py-2 rounded-xl bg-emerald-700 text-white text-xs font-bold hover:bg-emerald-800">Đánh dấu đã học xong (+%)</button>
+        </div>
+      `);
+
+      document.getElementById('markVideoDoneBtn').addEventListener('click', () => {
+        toggleCourseItemDone(chId, lsId, itId, true);
+        closeModal();
+      });
+    }
+
+    function openTkbSlotModal(editSlot = null) {
+      openModal(`
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-extrabold">${editSlot ? 'Sửa khung giờ học' : 'Thêm khung giờ vào TKB'}</h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <form id="tkbSlotForm" class="space-y-3">
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-bold mb-1">Thời gian</label>
+              <input id="slotTime" required value="${editSlot ? editSlot.time : '19:30 – 21:00'}" placeholder="07:00 – 11:30" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Nhãn môn / Loại</label>
+              <input id="slotTag" value="${editSlot ? editSlot.tag : 'Học tập'}" placeholder="Toán / Hóa / V-ACT" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Nội dung công việc / Môn học</label>
+            <input id="slotTitle" required value="${editSlot ? editSlot.title : ''}" placeholder="Vd: Học Toán Chuyên đề Xác suất" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+          </div>
+          <div>
+            <label class="block text-xs font-bold mb-1">Giáo viên dạy</label>
+            <input id="slotTeacher" required value="${editSlot ? editSlot.teacher : ''}" placeholder="Vd: Thầy Lương Văn Huy" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+          </div>
+          <div class="grid grid-cols-2 gap-2.5">
+            <div>
+              <label class="block text-xs font-bold mb-1">Ghi chú</label>
+              <input id="slotNote" value="${editSlot ? editSlot.note : ''}" placeholder="Mang đề cương..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Màu thẻ</label>
+              <select id="slotColor" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs">
+                <option value="blue" ${editSlot?.color === 'blue' ? 'selected' : ''}>Xanh lam (Chính khóa)</option>
+                <option value="maroon" ${editSlot?.color === 'maroon' ? 'selected' : ''}>Đỏ rượu (Ưu tiên)</option>
+                <option value="black" ${editSlot?.color === 'black' ? 'selected' : ''}>Đen tối giản (Học thêm)</option>
+              </select>
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-xs font-bold">Hủy</button>
+            <button type="submit" class="px-5 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold">Lưu lịch</button>
+          </div>
+        </form>
+      `);
+
+      document.getElementById('tkbSlotForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const payload = {
+          id: editSlot ? editSlot.id : uid('tkb'),
+          time: nfc(document.getElementById('slotTime').value.trim()),
+          tag: nfc(document.getElementById('slotTag').value.trim()),
+          title: nfc(document.getElementById('slotTitle').value.trim()),
+          teacher: nfc(document.getElementById('slotTeacher').value.trim()),
+          note: nfc(document.getElementById('slotNote').value.trim()),
+          color: document.getElementById('slotColor').value,
+          done: editSlot ? editSlot.done : false
+        };
+        const arr = state.timetable[state.selectedDay] || (state.timetable[state.selectedDay] = []);
+        if (editSlot) {
+          const idx = arr.findIndex(x => x.id === editSlot.id);
+          if (idx >= 0) arr[idx] = payload;
+        } else {
+          arr.push(payload);
+        }
+        saveState();
+        closeModal();
+        renderCurrentView();
+        showToast('Đã cập nhật thời khóa biểu!', 'success');
+      });
+    }
+
+    function openCalendarDayModal(iso) {
+      const evs = state.calendarEvents.filter(e => e.date === iso);
+      openModal(`
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-extrabold">Lịch ngày ${iso.split('-').reverse().join('/')}</h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <div class="space-y-2 mb-4">
+          ${evs.length === 0 ? '<div class="text-xs text-slate-400">Chưa có sự kiện nào trong ngày này.</div>' : evs.map(ev => `
+            <div class="flex items-center justify-between bg-slate-50 rounded-xl px-3.5 py-2.5 border border-slate-200">
+              <span class="text-xs font-bold text-slate-800">${ev.title}</span>
+              <button type="button" data-del-cal-ev="${ev.id}" class="text-slate-400 hover:text-rose-600 text-xs">Xóa</button>
+            </div>
+          `).join('')}
+        </div>
+        <form id="addCalEvForm" class="space-y-2.5 border-t border-slate-200 pt-4">
+          <div class="text-xs font-bold">Thêm sự kiện mới</div>
+          <input id="calEvTitle" required placeholder="Tên công việc / Buổi học / Hạn nộp..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs" />
+          <div class="grid grid-cols-2 gap-2">
+            <select id="calEvType" class="px-3 py-2 rounded-xl border border-slate-300 text-xs">
+              <option value="study">Học tập</option>
+              <option value="deadline">Hạn nộp</option>
+            </select>
+            <select id="calEvStyle" class="px-3 py-2 rounded-xl border border-slate-300 text-xs">
+              <option value="maroon">Màu đỏ rượu</option>
+              <option value="blue">Màu xanh lam</option>
+              <option value="black">Màu đen</option>
+              <option value="alert">Cảnh báo hồng (!)</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Thêm vào lịch</button>
+        </form>
+      `);
+
+      document.querySelectorAll('[data-del-cal-ev]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.calendarEvents = state.calendarEvents.filter(e => e.id !== btn.dataset.delCalEv);
+          saveState();
+          openCalendarDayModal(iso);
+          renderCurrentView();
+        });
+      });
+
+      document.getElementById('addCalEvForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        state.calendarEvents.push({
+          id: uid('ce'),
+          date: iso,
+          title: nfc(document.getElementById('calEvTitle').value.trim()),
+          type: document.getElementById('calEvType').value,
+          style: document.getElementById('calEvStyle').value
+        });
+        saveState();
+        closeModal();
+        renderCurrentView();
+        showToast('Đã thêm sự kiện vào lịch tháng!', 'success');
+      });
+    }
+
+    function openAddWorkTaskModal() {
+      openModal(`
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-base font-extrabold">Thêm công việc mới</h3>
+          <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+        </div>
+        <form id="addWorkForm" class="space-y-3">
+          <input id="wkTitle" required placeholder="Tên công việc / bài tập..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+          <input id="wkSub" placeholder="Môn học / Giáo viên / Ghi chú..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+          <div class="grid grid-cols-2 gap-2">
+            <select id="wkStatus" class="px-3 py-2 rounded-xl border border-slate-300 text-xs">
+              <option value="pending">Chờ làm</option>
+              <option value="doing">Đang thực hiện</option>
+              <option value="done">Đã xong</option>
+            </select>
+            <select id="wkCat" class="px-3 py-2 rounded-xl border border-slate-300 text-xs">
+              <option value="kho">Kho bài tập</option>
+              <option value="booking">Lịch & Nhóm</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Thêm công việc</button>
+        </form>
+      `);
+      document.getElementById('addWorkForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        state.workItems.unshift({
+          id: uid('w'),
+          title: nfc(document.getElementById('wkTitle').value.trim()),
+          subtitle: nfc(document.getElementById('wkSub').value.trim()) || 'Cá nhân',
+          status: document.getElementById('wkStatus').value,
+          category: document.getElementById('wkCat').value
+        });
+        saveState();
+        closeModal();
+        renderCurrentView();
+        showToast('Đã thêm công việc mới!', 'success');
+      });
+    }
+
+    function toggleCourseItemDone(chId, lsId, itId, forceVal = null) {
+      const course = state.courses.find(c => c.id === state.selectedCourseId);
+      if (!course) return;
+      const ch = course.chapters.find(c => c.id === chId);
+      const ls = ch && ch.lessons.find(l => l.id === lsId);
+      const it = ls && ls.items.find(i => i.id === itId);
+      if (!it) return;
+      it.done = forceVal !== null ? forceVal : !it.done;
+      saveState();
+      renderCurrentView();
+    }
+
+    // =========================================================================
+    // EVENT BINDING AFTER RENDER
+    // =========================================================================
+    function bindViewEvents() {
+      // Jump links
+      document.querySelectorAll('[data-jump-view]').forEach(btn => {
+        btn.addEventListener('click', () => setActiveNav(btn.dataset.jumpView));
+      });
+
+      // Study sub-tabs
+      document.querySelectorAll('[data-study-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.studySubTab = btn.dataset.studyTab;
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      // Google auth button
+      const gBtn = document.getElementById('openGoogleAuthBtn');
+      if (gBtn) gBtn.addEventListener('click', openGoogleAuthModal);
+
+      // TKB day selector
+      document.querySelectorAll('[data-select-day]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedDay = Number(btn.dataset.selectDay);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      const addTkbBtn = document.getElementById('addTkbSlotBtn');
+      if (addTkbBtn) addTkbBtn.addEventListener('click', () => openTkbSlotModal(null));
+
+      document.querySelectorAll('[data-toggle-tkb]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const list = state.timetable[state.selectedDay] || [];
+          const slot = list.find(s => s.id === btn.dataset.toggleTkb);
+          if (slot) {
+            slot.done = !slot.done;
+            saveState();
+            renderCurrentView();
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-edit-tkb]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const list = state.timetable[state.selectedDay] || [];
+          const slot = list.find(s => s.id === btn.dataset.editTkb);
+          if (slot) openTkbSlotModal(slot);
+        });
+      });
+
+      document.querySelectorAll('[data-del-tkb]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.timetable[state.selectedDay] = (state.timetable[state.selectedDay] || []).filter(s => s.id !== btn.dataset.delTkb);
+          saveState();
+          renderCurrentView();
+          showToast('Đã xóa khung giờ khỏi TKB.', 'info');
+        });
+      });
+
+      // Course switcher & sync
+      document.querySelectorAll('[data-select-course]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.selectedCourseId = btn.dataset.selectCourse;
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      const addCourseBtn = document.getElementById('addSheetCourseBtn');
+      if (addCourseBtn) addCourseBtn.addEventListener('click', openAddSheetCourseModal);
+
+      const syncBtn = document.getElementById('syncCurrentCourseBtn');
+      if (syncBtn) {
+        syncBtn.addEventListener('click', async () => {
+          const course = state.courses.find(c => c.id === state.selectedCourseId);
+          if (course) {
+            const ok = await syncCourseFromGoogleSheet(course);
+            if (ok) renderCurrentView();
+          }
+        });
+      }
+
+      const delCourseBtn = document.getElementById('deleteCourseBtn');
+      if (delCourseBtn) {
+        delCourseBtn.addEventListener('click', () => {
+          state.courses = state.courses.filter(c => c.id !== state.selectedCourseId);
+          state.selectedCourseId = state.courses[0]?.id || '';
+          saveState();
+          renderCurrentView();
+          showToast('Đã xóa khóa học.', 'info');
+        });
+      }
+
+      // Chapter & Lesson accordions
+      document.querySelectorAll('[data-toggle-chapter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const course = state.courses.find(c => c.id === state.selectedCourseId);
+          const ch = course && course.chapters.find(c => c.id === btn.dataset.toggleChapter);
+          if (ch) {
+            ch.expanded = !ch.expanded;
+            saveState();
+            renderCurrentView();
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-toggle-lesson]').forEach(el => {
+        el.addEventListener('click', () => {
+          const [chId, lsId] = el.dataset.toggleLesson.split('|');
+          const course = state.courses.find(c => c.id === state.selectedCourseId);
+          const ch = course && course.chapters.find(c => c.id === chId);
+          const ls = ch && ch.lessons.find(l => l.id === lsId);
+          if (ls) {
+            ls.expanded = !ls.expanded;
+            saveState();
+            renderCurrentView();
+          }
+        });
+      });
+
+      document.querySelectorAll('[data-check-item]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const [chId, lsId, itId] = cb.dataset.checkItem.split('|');
+          toggleCourseItemDone(chId, lsId, itId, cb.checked);
+        });
+      });
+
+      document.querySelectorAll('[data-auto-study]').forEach(link => {
+        link.addEventListener('click', () => {
+          const [chId, lsId, itId] = link.dataset.autoStudy.split('|');
+          toggleCourseItemDone(chId, lsId, itId, true);
+          showToast('Đã tự động cập nhật tiến độ bài học!', 'success');
+        });
+      });
+
+      document.querySelectorAll('[data-play-yt]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const [ytId, chId, lsId, itId] = btn.dataset.playYt.split('|');
+          openYouTubeModal(ytId, chId, lsId, itId);
+        });
+      });
+
+      // Work view bindings
+      document.querySelectorAll('[data-work-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.workLeftTab = btn.dataset.workTab;
+          saveState();
+          renderCurrentView();
+        });
+      });
+      const addWorkBtn = document.getElementById('addWorkTaskBtn');
+      if (addWorkBtn) addWorkBtn.addEventListener('click', openAddWorkTaskModal);
+
+      document.querySelectorAll('[data-cycle-work]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const w = state.workItems.find(x => x.id === btn.dataset.cycleWork);
+          if (w) {
+            w.status = w.status === 'pending' ? 'doing' : w.status === 'doing' ? 'done' : 'pending';
+            saveState();
+            renderCurrentView();
+          }
+        });
+      });
+      document.querySelectorAll('[data-del-work]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.workItems = state.workItems.filter(x => x.id !== btn.dataset.delWork);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      document.querySelectorAll('[data-cal-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.calFilter = btn.dataset.calFilter;
+          saveState();
+          renderCurrentView();
+        });
+      });
+      const calPrev = document.getElementById('calPrevBtn');
+      if (calPrev) calPrev.addEventListener('click', () => {
+        state.calMonth--;
+        if (state.calMonth < 0) { state.calMonth = 11; state.calYear--; }
+        saveState();
+        renderCurrentView();
+      });
+      const calNext = document.getElementById('calNextBtn');
+      if (calNext) calNext.addEventListener('click', () => {
+        state.calMonth++;
+        if (state.calMonth > 11) { state.calMonth = 0; state.calYear++; }
+        saveState();
+        renderCurrentView();
+      });
+      const calToday = document.getElementById('calTodayBtn');
+      if (calToday) calToday.addEventListener('click', () => {
+        state.calYear = 2026;
+        state.calMonth = 10;
+        saveState();
+        renderCurrentView();
+      });
+      document.querySelectorAll('[data-open-cal-day]').forEach(cell => {
+        cell.addEventListener('click', () => openCalendarDayModal(cell.dataset.openCalDay));
+      });
+
+      // Reminder bindings
+      const remForm = document.getElementById('addReminderForm');
+      if (remForm) {
+        remForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          state.reminders.unshift({
+            id: uid('r'),
+            title: nfc(document.getElementById('remTitleInput').value.trim()),
+            time: nfc(document.getElementById('remTimeInput').value.trim()) || 'Hôm nay',
+            done: false
+          });
+          saveState();
+          renderCurrentView();
+        });
+      }
+      document.querySelectorAll('[data-toggle-rem]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const r = state.reminders.find(x => x.id === cb.dataset.toggleRem);
+          if (r) { r.done = cb.checked; saveState(); renderCurrentView(); }
+        });
+      });
+      document.querySelectorAll('[data-del-rem]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.reminders = state.reminders.filter(x => x.id !== btn.dataset.delRem);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      // Finance bindings
+      const finForm = document.getElementById('addFinanceForm');
+      if (finForm) {
+        finForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          state.finance.unshift({
+            id: uid('f'),
+            title: nfc(document.getElementById('finTitle').value.trim()),
+            amount: Number(document.getElementById('finAmount').value) || 0,
+            type: document.getElementById('finType').value,
+            date: new Date().toLocaleDateString('vi-VN')
+          });
+          saveState();
+          renderCurrentView();
+        });
+      }
+      document.querySelectorAll('[data-del-fin]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.finance = state.finance.filter(x => x.id !== btn.dataset.delFin);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      // Quick note bindings
+      const noteForm = document.getElementById('addNoteForm');
+      if (noteForm) {
+        noteForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          state.notes.unshift({
+            id: uid('n'),
+            text: nfc(document.getElementById('quickNoteMainInput').value.trim()),
+            createdAt: new Date().toLocaleDateString('vi-VN')
+          });
+          saveState();
+          renderCurrentView();
+        });
+      }
+      document.querySelectorAll('[data-del-note]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.notes = state.notes.filter(x => x.id !== btn.dataset.delNote);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      // Project bindings
+      const addProjBtn = document.getElementById('addProjectBtn');
+      if (addProjBtn) {
+        addProjBtn.addEventListener('click', () => {
+          openModal(`
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-base font-extrabold">Thêm liên kết dự án</h3>
+              <button type="button" onclick="closeModal()" class="p-1.5 rounded-xl hover:bg-slate-100"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <form id="projForm" class="space-y-3">
+              <input id="pName" required placeholder="Tên ứng dụng / dự án..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+              <input id="pDesc" placeholder="Mô tả ngắn..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+              <input id="pUrl" type="url" required placeholder="https://..." class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs" />
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white text-xs font-bold">Lưu</button>
+            </form>
+          `);
+          document.getElementById('projForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            state.projects.push({
+              id: uid('p'),
+              name: nfc(document.getElementById('pName').value.trim()),
+              desc: nfc(document.getElementById('pDesc').value.trim()) || 'Liên kết nhanh',
+              url: document.getElementById('pUrl').value.trim(),
+              icon: 'link'
+            });
+            saveState();
+            closeModal();
+            renderCurrentView();
+          });
+        });
+      }
+      document.querySelectorAll('[data-del-proj]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.projects = state.projects.filter(x => x.id !== btn.dataset.delProj);
+          saveState();
+          renderCurrentView();
+        });
+      });
+
+      // Relax Pomodoro & Forest Rain bindings
+      document.querySelectorAll('[data-pomo-preset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          clearInterval(pomoTimer);
+          pomoRunning = false;
+          pomoSeconds = Number(btn.dataset.pomoPreset) * 60;
+          renderCurrentView();
+        });
+      });
+      const pomoToggle = document.getElementById('pomoToggleBtn');
+      if (pomoToggle) {
+        pomoToggle.addEventListener('click', () => {
+          if (pomoRunning) {
+            clearInterval(pomoTimer);
+            pomoRunning = false;
+            renderCurrentView();
+          } else {
+            pomoRunning = true;
+            clearInterval(pomoTimer);
+            pomoTimer = setInterval(() => {
+              if (pomoSeconds > 0) {
+                pomoSeconds--;
+                const disp = document.getElementById('pomoDisplay');
+                if (disp) disp.textContent = formatPomo(pomoSeconds);
+              } else {
+                clearInterval(pomoTimer);
+                pomoRunning = false;
+                showToast('Hoàn thành phiên tập trung!', 'success');
+                renderCurrentView();
+              }
+            }, 1000);
+            renderCurrentView();
+          }
+        });
+      }
+      const pomoReset = document.getElementById('pomoResetBtn');
+      if (pomoReset) {
+        pomoReset.addEventListener('click', () => {
+          clearInterval(pomoTimer);
+          pomoRunning = false;
+          pomoSeconds = 25 * 60;
+          renderCurrentView();
+        });
+      }
+      const rainBtn = document.getElementById('rainToggleBtn');
+      if (rainBtn) {
+        rainBtn.addEventListener('click', () => {
+          if (rainPlaying) {
+            if (rainNode) { try { rainNode.stop(); } catch (e) {} rainNode = null; }
+            rainPlaying = false;
+            renderCurrentView();
+          } else {
+            try {
+              const AudioCtx = window.AudioContext || window.webkitAudioContext;
+              rainAudioCtx = rainAudioCtx || new AudioCtx();
+              const bufSize = rainAudioCtx.sampleRate * 2;
+              const buffer = rainAudioCtx.createBuffer(1, bufSize, rainAudioCtx.sampleRate);
+              const out = buffer.getChannelData(0);
+              let last = 0;
+              for (let i = 0; i < bufSize; i++) {
+                const white = Math.random() * 2 - 1;
+                out[i] = (last + 0.02 * white) / 1.02;
+                last = out[i];
+                out[i] *= 0.25;
+              }
+              const src = rainAudioCtx.createBufferSource();
+              src.buffer = buffer;
+              src.loop = true;
+              const gain = rainAudioCtx.createGain();
+              gain.gain.value = 0.25;
+              src.connect(gain);
+              gain.connect(rainAudioCtx.destination);
+              src.start();
+              rainNode = src;
+              rainPlaying = true;
+              renderCurrentView();
+            } catch (e) {
+              showToast('Trình duyệt không hỗ trợ tạo âm thanh.', 'error');
+            }
+          }
+        });
+      }
+
+      // Theme bindings
+      document.querySelectorAll('[data-pick-theme]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.theme = btn.dataset.pickTheme;
+          applyTheme();
+          saveState();
+          renderCurrentView();
+        });
+      });
+      const blurSlider = document.getElementById('blurSlider');
+      if (blurSlider) {
+        blurSlider.addEventListener('input', () => {
+          state.glassBlur = Number(blurSlider.value);
+          document.getElementById('blurValLabel').textContent = state.glassBlur + 'px';
+          applyTheme();
+          saveState();
+        });
+      }
+
+      // Settings bindings
+      const setGBtn = document.getElementById('settingsGoogleBtn');
+      if (setGBtn) setGBtn.addEventListener('click', openGoogleAuthModal);
+
+      const autoSyncCb = document.getElementById('autoSyncToggle');
+      if (autoSyncCb) {
+        autoSyncCb.addEventListener('change', () => {
+          state.autoSyncOnLoad = autoSyncCb.checked;
+          saveState();
+          showToast(state.autoSyncOnLoad ? 'Đã bật tự động đồng bộ bản gốc.' : 'Đã tắt tự động đồng bộ.', 'info');
+        });
+      }
+
+      const expBtn = document.getElementById('exportBackupBtn');
+      if (expBtn) {
+        expBtn.addEventListener('click', () => {
+          const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'forest-study-backup.json';
+          a.click();
+          showToast('Đã tải xuống file sao lưu JSON.', 'success');
+        });
+      }
+
+      const rstBtn = document.getElementById('resetDemoBtn');
+      if (rstBtn) {
+        rstBtn.addEventListener('click', () => {
+          state = structuredClone(DEFAULT_STATE);
+          saveState();
+          applyTheme();
+          updateGoogleBadges();
+          renderCurrentView();
+          showToast('Đã khôi phục dữ liệu mặc định.', 'info');
+        });
+      }
+    }
+
+    // =========================================================================
+    // SIDEBAR & GLOBAL INIT
+    // =========================================================================
+    function openMobileSidebar() {
+      document.getElementById('sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebarBackdrop').classList.remove('hidden');
+    }
+    function closeMobileSidebar() {
+      document.getElementById('sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebarBackdrop').classList.add('hidden');
+    }
+
+    document.getElementById('mobileMenuBtn').addEventListener('click', openMobileSidebar);
+    document.getElementById('closeSidebarBtn').addEventListener('click', closeMobileSidebar);
+    document.getElementById('sidebarBackdrop').addEventListener('click', closeMobileSidebar);
+
+    document.getElementById('sidebarGoogleCard').addEventListener('click', openGoogleAuthModal);
+    document.getElementById('mobileGoogleBtn').addEventListener('click', openGoogleAuthModal);
+
+    document.querySelectorAll('aside .nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => setActiveNav(btn.dataset.view));
+    });
+
+    function saveSidebarQuickNote() {
+      const ta = document.getElementById('sidebarQuickNote');
+      const val = nfc(ta.value.trim());
+      if (!val) return;
+      state.notes.unshift({ id: uid('n'), text: val, createdAt: new Date().toLocaleDateString('vi-VN') });
+      ta.value = '';
+      saveState();
+      showToast('Đã lưu vào Quick Note!', 'success');
+      if (state.activeView === 'quicknote') renderCurrentView();
+    }
+
+    document.getElementById('saveSidebarNoteBtn').addEventListener('click', saveSidebarQuickNote);
+    document.getElementById('sidebarQuickNote').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        saveSidebarQuickNote();
+      }
+    });
+
+    // Boot
+    applyTheme();
+    updateGoogleBadges();
+    setActiveNav(state.activeView || 'study');
+  </script>
+</body>
+</html>
